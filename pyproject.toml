@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sr-tire"
+version = "0.1.0"
+description = "Tire data processing, plotting, and symbolic regression utilities."
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["sr_tire", "sr_tire.models"]

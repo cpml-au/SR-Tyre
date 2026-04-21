@@ -1,13 +1,24 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from scipy.interpolate import PchipInterpolator
 
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-def load_and_process_dataset(data_type=1, n_bins=5, n_points=200, return_metadata=False):
+
+def flatten_bins(bins):
+    non_empty_bins = [bin_values for bin_values in bins if len(bin_values) > 0]
+    if not non_empty_bins:
+        return np.array([])
+    return np.concatenate(non_empty_bins)
+
+
+def load_and_process_bins(data_type=1, n_bins=5, n_points=200):
     if data_type == 0:
-        df = pd.read_csv("longitudinal_tire_test.csv")
+        df = pd.read_csv(DATA_DIR / "longitudinal_tire_test.csv")
     else:
-        df = pd.read_csv("lateral_tire_test.csv")
+        df = pd.read_csv(DATA_DIR / "lateral_tire_test.csv")
 
     SR = df["SR"].to_numpy()
     SA = df["SA"].to_numpy()
@@ -94,11 +105,22 @@ def load_and_process_dataset(data_type=1, n_bins=5, n_points=200, return_metadat
         x_new.append(x_i)
         y_new.append(y_i)
 
-    X = x_new
-    y = y_new
+    return x_new, y_new, Fz_rep
 
-    if return_metadata:
-        metadata = {"Fz_rep": Fz_rep, "n_bins": n_bins}
-        return X, y, metadata
 
-    return X, y
+def load_and_process_dataset(data_type=1, n_bins=5, n_points=200):
+    x_bins, y_bins, _ = load_and_process_bins(
+        data_type=data_type,
+        n_bins=n_bins,
+        n_points=n_points,
+    )
+
+    # Use bins 1-3 for training, bin 4 for validation, and bin 5 for testing.
+    X_train = flatten_bins(x_bins[: min(3, len(x_bins))])
+    y_train = flatten_bins(y_bins[: min(3, len(y_bins))])
+    X_val = flatten_bins(x_bins[3:4])
+    y_val = flatten_bins(y_bins[3:4])
+    X_test = flatten_bins(x_bins[4:5])
+    y_test = flatten_bins(y_bins[4:5])
+
+    return X_train, y_train, X_val, y_val, X_test, y_test

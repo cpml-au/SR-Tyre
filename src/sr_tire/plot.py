@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
-from force import compute_force_model
-from process_data import load_and_process_dataset
+from .force import compute_force_model
+from .process_data import load_and_process_bins
 
 
 DEFAULT_THETA_OPT = np.array([
@@ -69,11 +70,15 @@ def plot_force_model_data(
     plt.legend()
     plt.show()
 
-if __name__ == "__main__":
-    X, y, metadata = load_and_process_dataset(data_type=1, return_metadata=True)
+def main():
+    x_bins, y_bins, Fz_rep = load_and_process_bins(data_type=1)
     plot_force_model_data(
-        X,
-        y,
-        metadata["Fz_rep"],
+        x_bins,
+        y_bins,
+        Fz_rep,
         theta_opt=DEFAULT_THETA_OPT,
     )
+
+
+if __name__ == "__main__":
+    main()
