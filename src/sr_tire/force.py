@@ -1,5 +1,11 @@
 import numpy as np
 
+DEFAULT_THETA_OPT = np.array([
+    0.0668, 0.0001, 360.4850, 0.0230,
+    0.6456, 3.07e-05,
+    1.7213, 3.6888, 1.3652,
+])
+
 
 def default_mu_expression(v, mu_s, v_s, delta_s):
     return 1 + (mu_s - 1) * np.exp(-np.abs(v / v_s) ** delta_s)
@@ -7,13 +13,16 @@ def default_mu_expression(v, mu_s, v_s, delta_s):
 
 def compute_force_model(
     Fz_rep,
-    theta_opt,
+    theta_opt=None,
     V=16,
     n_v=200,
     n_x=100,
     epsilon=1e-12,
     mu_expression=None,
 ):
+    if theta_opt is None:
+        theta_opt = DEFAULT_THETA_OPT
+
     if mu_expression is None:
         mu_expression = default_mu_expression
 
@@ -33,7 +42,14 @@ def compute_force_model(
     for k in range(len(Fz_rep)):
         xi = xi_bar * L[k]
         dx = xi[1] - xi[0]
-        mu = np.asarray(mu_expression(v, mu_s, v_s, delta_s), dtype=float)
+        mu = np.asarray(mu_expression(v, mu_s, v_s, delta_s), dtype=float).reshape(-1)
+        if mu.size == 1:
+            mu = np.full(n_v, mu.item(), dtype=float)
+        elif mu.size != n_v:
+            raise ValueError(
+                f"mu_expression must return either a scalar or an array of length {n_v}, "
+                f"got shape {mu.shape}"
+            )
         z = np.zeros((n_v, n_x))
 
         for i in range(n_v):

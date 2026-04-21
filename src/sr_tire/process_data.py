@@ -14,6 +14,14 @@ def flatten_bins(bins):
     return np.concatenate(non_empty_bins)
 
 
+def _mean_or_nan(values):
+    values = np.asarray(values, dtype=float)
+    finite_values = values[np.isfinite(values)]
+    if finite_values.size == 0:
+        return np.nan
+    return float(np.mean(finite_values))
+
+
 def load_and_process_bins(data_type=1, n_bins=5, n_points=200):
     if data_type == 0:
         df = pd.read_csv(DATA_DIR / "longitudinal_tire_test.csv")
@@ -124,3 +132,18 @@ def load_and_process_dataset(data_type=1, n_bins=5, n_points=200):
     y_test = flatten_bins(y_bins[4:5])
 
     return X_train, y_train, X_val, y_val, X_test, y_test
+
+
+def load_split_representative_loads(data_type=1, n_bins=5, n_points=200):
+    _, _, Fz_rep = load_and_process_bins(
+        data_type=data_type,
+        n_bins=n_bins,
+        n_points=n_points,
+    )
+
+    Fz_train_rep = _mean_or_nan(Fz_rep[: min(3, len(Fz_rep))])
+    Fz_val_rep = _mean_or_nan(Fz_rep[3:4])
+    Fz_test_rep = _mean_or_nan(Fz_rep[4:5])
+    Fz_overall_rep = _mean_or_nan(Fz_rep)
+
+    return Fz_train_rep, Fz_val_rep, Fz_test_rep, Fz_overall_rep

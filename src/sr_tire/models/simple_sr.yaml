@@ -1,8 +1,8 @@
 gp:
-  num_individuals: 1000 # 1000
+  num_individuals: 100 # 1000
   generations: 20 # 200
   multi_island:
-    num_islands: 2 # 15
+    num_islands: 1 # 15
     migration: { "freq": 10, "frac": 0.05 }
   crossover_prob: 0.
   mut_prob: 1.
@@ -27,7 +27,7 @@ gp:
     fun: gp.cxOnePoint
     kargs: "{}"
   scaleXy: True
-  batch_size: 10
+  batch_size: 100
   use_constants: True
   primitives:
     imports:
