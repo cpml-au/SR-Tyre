@@ -14,6 +14,8 @@ from ..force import compute_force_model
 MODEL_V = 16
 MODEL_N_V = 200
 MODEL_N_X = 100
+PSO_GENERATIONS = 20
+PSO_SWARM_SIZE = 50
 
 
 def inverse_transform_features(X, scaler_X):
@@ -131,7 +133,6 @@ def eval_MSE_and_tune_constants(
 
     if num_consts > 0:
         x0 = np.ones(num_consts)
-        swarm_size = 10
 
         class fitting_problem:
             def fitness(self, x):
@@ -150,8 +151,8 @@ def eval_MSE_and_tune_constants(
                 return (-5.0 * np.ones(num_consts), 5.0 * np.ones(num_consts))
 
         prb = pg.problem(fitting_problem())
-        algo = pg.algorithm(pg.pso(gen=10))
-        pop = pg.population(prb, size=swarm_size)
+        algo = pg.algorithm(pg.pso(gen=PSO_GENERATIONS))
+        pop = pg.population(prb, size=PSO_SWARM_SIZE)
         pop.set_x(0, x0)
         pop = algo.evolve(pop)
         mse = pop.champion_f[0]

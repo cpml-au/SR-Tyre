@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import numpy as np
 
 DEFAULT_THETA_OPT = np.array([
@@ -11,6 +13,15 @@ def default_mu_expression(v, mu_s, v_s, delta_s):
     return 1 + (mu_s - 1) * np.exp(-np.abs(v / v_s) ** delta_s)
 
 
+@lru_cache(maxsize=None)
+def _get_force_model_grids(V, n_v, n_x, epsilon):
+    v = np.linspace(-1, 1, n_v) * V
+    xi_bar = np.linspace(0, 1, n_x)
+    v_abs = np.sqrt(v**2 + epsilon)
+    v_sign = v / v_abs
+    return v, xi_bar, v_abs, v_sign
+
+
 def compute_force_model(
     Fz_rep,
     theta_opt=None,
@@ -20,6 +31,8 @@ def compute_force_model(
     epsilon=1e-12,
     mu_expression=None,
 ):
+    Fz_rep = np.asarray(Fz_rep, dtype=float).reshape(-1)
+
     if theta_opt is None:
         theta_opt = DEFAULT_THETA_OPT
 
@@ -35,37 +48,23 @@ def compute_force_model(
     v_s = theta_opt[7]
     delta_s = theta_opt[8]
 
-    v = np.linspace(-1, 1, n_v) * V
-    xi_bar = np.linspace(0, 1, n_x)
+    v, xi_bar, v_abs, v_sign = _get_force_model_grids(V, n_v, n_x, epsilon)
     F_b = np.zeros((len(Fz_rep), n_v))
+    mu = np.asarray(mu_expression(v, mu_s, v_s, delta_s), dtype=float).reshape(-1)
+    if mu.size == 1:
+        mu = np.full(n_v, mu.item(), dtype=float)
+    elif mu.size != n_v:
+        raise ValueError(
+            f"mu_expression must return either a scalar or an array of length {n_v}, "
+            f"got shape {mu.shape}"
+        )
 
     for k in range(len(Fz_rep)):
         xi = xi_bar * L[k]
         dx = xi[1] - xi[0]
-        mu = np.asarray(mu_expression(v, mu_s, v_s, delta_s), dtype=float).reshape(-1)
-        if mu.size == 1:
-            mu = np.full(n_v, mu.item(), dtype=float)
-        elif mu.size != n_v:
-            raise ValueError(
-                f"mu_expression must return either a scalar or an array of length {n_v}, "
-                f"got shape {mu.shape}"
-            )
-        z = np.zeros((n_v, n_x))
-
-        for i in range(n_v):
-            for j in range(n_x):
-                z[i, j] = (
-                    -mu[i] / k0[k]
-                    * v[i]
-                    / np.sqrt(v[i] ** 2 + epsilon)
-                    * (
-                        1
-                        - np.exp(
-                            -np.sqrt(v[i] ** 2 + epsilon) / V * k0[k] / mu[i] * xi[j]
-                        )
-                    )
-                )
-
-        F_b[k, :] = np.sum(z, axis=1) * dx * k0[k] * p[k] * mu_d[k]
+        base = -(mu / k0[k]) * v_sign
+        exponent = -(v_abs[:, None] / V) * (k0[k] / mu)[:, None] * xi[None, :]
+        z_sum = np.sum(base[:, None] * (1 - np.exp(exponent)), axis=1)
+        F_b[k, :] = z_sum * dx * k0[k] * p[k] * mu_d[k]
 
     return v, F_b

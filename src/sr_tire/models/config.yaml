@@ -1,8 +1,8 @@
 gp:
-  num_individuals: 100 # 1000
+  num_individuals: 500 # 1000
   generations: 20 # 200
   multi_island:
-    num_islands: 1 # 15
+    num_islands: 4 # 15
     migration: { "freq": 10, "frac": 0.05 }
   crossover_prob: 0.
   mut_prob: 1.
@@ -11,7 +11,7 @@ gp:
   max_: 4
   overlapping_generation: True
   validate: False
-  penalty: { "reg_param": 1.e-3 }
+  penalty: { "reg_param": 0. }
   select:
     # fun: tools.selection.tournament_with_elitism
     # kargs: "{'tournsize': 2, 'stochastic_tourn': { 'enabled': True, 'prob': [0.7, 0.3] }}"
@@ -27,7 +27,7 @@ gp:
     fun: gp.cxOnePoint
     kargs: "{}"
   scaleXy: True
-  batch_size: 100
+  batch_size: 10
   use_constants: True
   primitives:
     imports:
@@ -58,6 +58,6 @@ gp:
         # { "name": "arcsin", "dimension": null, "rank": null },
         # { "name": "cos", "dimension": null, "rank": null },
         # { "name": "arccos", "dimension": null, "rank": null },
-        # { "name": "exp", "dimension": null, "rank": null },
+        { "name": "exp", "dimension": null, "rank": null },
         # { "name": "log", "dimension": null, "rank": null },
       ]

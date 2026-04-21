@@ -12,7 +12,7 @@ Utilities for:
 - `src/sr_tire/force.py`: force-model implementation
 - `src/sr_tire/plot.py`: plotting utilities
 - `src/sr_tire/models/flex_sr_run.py`: Flex symbolic regression entry point
-- `src/sr_tire/models/simple_sr.yaml`: Flex configuration
+- `src/sr_tire/models/config.yaml`: Flex configuration
 - `data/lateral_tire_test.csv`: tire dataset
 
 ## Install

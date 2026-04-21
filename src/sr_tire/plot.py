@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 
 from .force import DEFAULT_THETA_OPT, compute_force_model
 from .process_data import load_and_process_dataset, load_split_representative_loads
@@ -19,6 +20,8 @@ def plot_force_model_data(
     color=(0.55, 0.80, 0.95),
     xlabel="Relative velocity v (m/s)",
     ylabel="Lateral force Fy (kN)",
+    output_path=None,
+    show=True,
 ):
     X = np.asarray(X, dtype=float).reshape(-1)
     y = np.asarray(y, dtype=float).reshape(-1)
@@ -63,7 +66,16 @@ def plot_force_model_data(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.legend()
-    plt.show()
+
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=200, bbox_inches="tight")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
 
 def main():

@@ -30,10 +30,11 @@ from functools import partial
 # set up number of cpus per ray worker
 num_cpus = 1
 ROOT_DIR = Path(__file__).resolve().parents[3]
-CONFIG_PATH = Path(__file__).resolve().with_name("simple_sr.yaml")
+CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
 MODEL_V = 16
 MODEL_N_V = 200
 MODEL_N_X = 100
+PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
 
 
 # --- Custom generate dataset function ---
@@ -150,7 +151,6 @@ def build_regressor(
         "scaler_X": scaler_X,
         "scaler_y": scaler_y,
     }
-    print(regressor_params)
 
     pset = gp.PrimitiveSetTyped("Main", [float] * num_variables, float)
     pset = add_primitives_to_pset_from_dict(pset, config["gp"]["primitives"])
@@ -352,11 +352,14 @@ def main():
         n_v=MODEL_N_V,
         n_x=MODEL_N_X,
         mu_expression=make_mu_expression_from_regressor(best_gpsr),
+        output_path=PLOT_PATH,
+        show=False,
     )
 
     print("Accuracy: {}".format(best_validation_score))
     print("Best hyperparameters: {}".format(best_params))
     print("Best model results saved to {}".format(RESULTS_PATH))
+    print("Best model plot saved to {}".format(PLOT_PATH))
 
 
 if __name__ == "__main__":

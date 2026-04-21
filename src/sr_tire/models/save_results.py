@@ -4,8 +4,7 @@ import numpy as np
 from sklearn.metrics import r2_score
 
 
-ROOT_DIR = Path(__file__).resolve().parents[3]
-RESULTS_PATH = ROOT_DIR / "models" / "best_model_results.txt"
+RESULTS_PATH = Path(__file__).resolve().with_name("best_model_results.txt")
 
 
 def compute_regression_metrics(y_true, y_pred):
@@ -76,4 +75,5 @@ def save_model_results(
         f"test_rmse: {test_rmse}",
         f"test_r2: {test_r2}",
     ]
+    results_path.parent.mkdir(parents=True, exist_ok=True)
     results_path.write_text("\n".join(result_lines) + "\n")
