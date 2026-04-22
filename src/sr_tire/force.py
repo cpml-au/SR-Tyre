@@ -4,7 +4,6 @@ import numpy as np
 
 MODEL_V = 16
 
-# fix with paper values
 DEFAULT_THETA_OPT = np.array([
     0.0668, 0.0001, 360.4850, 0.0230,
     0.6456, 3.07e-05,

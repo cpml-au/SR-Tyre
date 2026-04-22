@@ -30,7 +30,6 @@ def plot_force_model_data(
     if Fz_rep is None:
         _, _, Fz_rep = load_and_process_bins()
 
-    Fz_rep = np.atleast_1d(Fz_rep).reshape(-1)
     X_bins = reshape_flattened_bins(X, Fz_rep)
     y_bins = reshape_flattened_bins(y, Fz_rep)
 
@@ -80,7 +79,7 @@ def plot_force_model_data(
         plt.close()
 
 
-def main():
+if __name__ == "__main__":
     X_train, y_train, X_val, y_val, X_test, y_test = make_datasets(data_type=1)
     _, _, Fz_all = load_and_process_bins(data_type=1)
     X = np.concatenate([X_train, X_val, X_test])
@@ -92,7 +91,3 @@ def main():
         Fz_rep=Fz_all,
         theta_opt=DEFAULT_THETA_OPT,
     )
-
-
-if __name__ == "__main__":
-    main()

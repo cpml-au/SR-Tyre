@@ -128,10 +128,4 @@ def make_datasets(data_type=1, n_bins=5, n_points=200):
 
 def reshape_flattened_bins(values, Fz_rep):
     values = values.reshape(-1)
-
-    if values.size % Fz_rep.size != 0:
-        raise ValueError(
-            f"Cannot reshape {values.size} values into {Fz_rep.size} load bins."
-        )
-
     return values.reshape(Fz_rep.size, -1)
