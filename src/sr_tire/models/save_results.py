@@ -27,8 +27,6 @@ def save_model_results(
     X_test,
     test_y,
     test_Fz_rep,
-    scaler_X,
-    scaler_y,
     predict_force_model_with_regressor,
     results_path=RESULTS_PATH,
 ):
@@ -38,22 +36,16 @@ def save_model_results(
         gpsr,
         X_train,
         train_Fz_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
     )
     y_val_pred = predict_force_model_with_regressor(
         gpsr,
         X_val,
         val_Fz_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
     )
     y_test_pred = predict_force_model_with_regressor(
         gpsr,
         X_test,
         test_Fz_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
     )
 
     y_train_true = np.asarray(train_y)

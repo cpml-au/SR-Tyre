@@ -13,17 +13,8 @@ from ..process_data import reshape_flattened_bins
 
 
 MODEL_V = 16
-MODEL_N_V = 200
-MODEL_N_X = 100
 PSO_GENERATIONS = 20
 PSO_SWARM_SIZE = 50
-
-
-def inverse_transform_features(X, scaler_X):
-    X = np.asarray(X, dtype=float).reshape(-1, 1)
-    if scaler_X is None:
-        return X[:, 0]
-    return scaler_X.inverse_transform(X)[:, 0]
 
 
 def eval_model(individual, X, consts=[]):
@@ -38,60 +29,25 @@ def predict_force_model_from_callable(
     individual,
     X,
     Fz_rep,
-    scaler_X=None,
-    scaler_y=None,
     consts=[],
 ):
-    max_abs_prediction = 1e8
-    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
-
     def mu_expression(v, mu_s, v_s, delta_s):
-        v_input = np.asarray(v).reshape(-1, 1)
+        v_input = v.reshape(-1, 1)
         mu = eval_model(individual, v_input, consts)
-        mu = np.asarray(mu, dtype=float).reshape(-1)
-        return np.nan_to_num(mu, nan=1.0, posinf=1e8, neginf=-1e8)
+        return np.asarray(mu, dtype=float).reshape(v.shape)
 
-    v_model, F_b = compute_force_model(
+    X_bins = reshape_flattened_bins(X, Fz_rep)
+    v_bins = -X_bins * MODEL_V
+    _, F_b = compute_force_model(
         Fz_rep,
         V=MODEL_V,
-        n_v=MODEL_N_V,
-        n_x=MODEL_N_X,
         mu_expression=mu_expression,
+        v=v_bins,
     )
-
-    X_raw = inverse_transform_features(X, scaler_X)
-    X_bins = reshape_flattened_bins(X_raw, Fz_rep)
-    y_pred_bins = []
-
-    for i, Fz_bin in enumerate(Fz_rep):
-        v_query = -X_bins[i] * MODEL_V
-        y_model = np.asarray(F_b[i] / Fz_bin, dtype=float)
-        y_model = np.nan_to_num(
-            y_model,
-            nan=0.0,
-            posinf=max_abs_prediction,
-            neginf=-max_abs_prediction,
-        )
-        y_model = np.clip(y_model, -max_abs_prediction, max_abs_prediction)
-        y_pred_bin = np.interp(v_query, v_model, y_model)
-        y_pred_bin = np.nan_to_num(
-            y_pred_bin,
-            nan=0.0,
-            posinf=max_abs_prediction,
-            neginf=-max_abs_prediction,
-        )
-        y_pred_bins.append(
-            np.clip(y_pred_bin, -max_abs_prediction, max_abs_prediction)
-        )
-
-    y_pred = np.concatenate(y_pred_bins)
-
-    if scaler_y is None:
-        return y_pred
-    return scaler_y.transform(y_pred.reshape(-1, 1)).reshape(-1)
+    return (F_b / Fz_rep[:, None]).reshape(-1)
 
 
-def predict_force_model_with_regressor(gpsr, X, Fz_rep, scaler_X=None, scaler_y=None):
+def predict_force_model_with_regressor(gpsr, X, Fz_rep):
     toolbox, _ = gpsr._GPSymbolicRegressor__creator_toolbox_pset_config()
     individual, _ = compile_individual_with_consts(gpsr._best, toolbox)
     consts = getattr(gpsr._best, "consts", [])
@@ -99,8 +55,6 @@ def predict_force_model_with_regressor(gpsr, X, Fz_rep, scaler_X=None, scaler_y=
         individual,
         X,
         Fz_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
         consts=consts,
     )
 
@@ -110,16 +64,12 @@ def compute_force_model_MSE(
     X,
     y,
     Fz_rep,
-    scaler_X=None,
-    scaler_y=None,
     consts=[],
 ):
     y_pred = predict_force_model_from_callable(
         individual,
         X,
         Fz_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
         consts=consts,
     )
     mse = np.mean((y - y_pred) ** 2)
@@ -136,8 +86,6 @@ def eval_MSE_and_tune_constants(
     X,
     y,
     Fz_rep,
-    scaler_X=None,
-    scaler_y=None,
 ):
     individual, num_consts = compile_individual_with_consts(tree, toolbox)
 
@@ -151,8 +99,6 @@ def eval_MSE_and_tune_constants(
                     X,
                     y,
                     Fz_rep,
-                    scaler_X=scaler_X,
-                    scaler_y=scaler_y,
                     consts=x,
                 )
                 return [total_err]
@@ -176,8 +122,6 @@ def eval_MSE_and_tune_constants(
             X,
             y,
             Fz_rep,
-            scaler_X=scaler_X,
-            scaler_y=scaler_y,
         )
         consts = []
     return mse, consts
@@ -217,8 +161,6 @@ def compute_attributes(
     penalty,
     fitness_scale,
     train_Fz_rep,
-    scaler_X,
-    scaler_y,
 ):
     attributes = [None] * len(individuals_batch)
 
@@ -235,8 +177,6 @@ def compute_attributes(
                 X[:, 0],
                 y,
                 train_Fz_rep,
-                scaler_X=scaler_X,
-                scaler_y=scaler_y,
             )
             fitness = (
                 fitness_scale

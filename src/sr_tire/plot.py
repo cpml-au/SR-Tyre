@@ -15,11 +15,8 @@ def plot_force_model_data(
     y,
     Fz_rep=None,
     theta_opt=None,
-    scaler_X=None,
-    scaler_y=None,
     V=16,
     n_v=200,
-    n_x=100,
     mu_expression=None,
     color=(0.55, 0.80, 0.95),
     xlabel="Relative velocity v (m/s)",
@@ -30,28 +27,17 @@ def plot_force_model_data(
     X = np.asarray(X, dtype=float).reshape(-1)
     y = np.asarray(y, dtype=float).reshape(-1)
 
-    if scaler_X is not None:
-        X_plot = scaler_X.inverse_transform(X.reshape(-1, 1)).reshape(-1)
-    else:
-        X_plot = X
-
-    if scaler_y is not None:
-        y_plot = scaler_y.inverse_transform(y.reshape(-1, 1)).reshape(-1)
-    else:
-        y_plot = y
-
     if Fz_rep is None:
         _, _, Fz_rep = load_and_process_bins()
 
     Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
-    X_bins = reshape_flattened_bins(X_plot, Fz_rep)
-    y_bins = reshape_flattened_bins(y_plot, Fz_rep)
+    X_bins = reshape_flattened_bins(X, Fz_rep)
+    y_bins = reshape_flattened_bins(y, Fz_rep)
 
     model_kwargs = {
         "theta_opt": theta_opt,
         "V": V,
         "n_v": n_v,
-        "n_x": n_x,
     }
 
     if mu_expression is not None:

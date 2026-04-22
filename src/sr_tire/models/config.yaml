@@ -26,7 +26,6 @@ gp:
   crossover:
     fun: gp.cxOnePoint
     kargs: "{}"
-  scaleXy: True
   batch_size: 10
   use_constants: True
   primitives:

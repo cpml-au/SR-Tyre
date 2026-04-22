@@ -15,7 +15,7 @@ def default_mu_expression(v, mu_s, v_s, delta_s):
 
 
 @lru_cache(maxsize=None)
-def _get_force_model_grids(V, n_v, n_x, epsilon):
+def _get_force_model_grids(V, n_v, epsilon):
     v = np.linspace(-1, 1, n_v) * V
     v_abs = np.sqrt(v**2 + epsilon)
     v_sign = np.sign(v)
@@ -27,9 +27,9 @@ def compute_force_model(
     theta_opt=None,
     V=16,
     n_v=200,
-    n_x=100,
     epsilon=1e-12,
     mu_expression=None,
+    v=None,
 ):
     if theta_opt is None:
         theta_opt = DEFAULT_THETA_OPT
@@ -52,23 +52,46 @@ def compute_force_model(
     v_s = theta_opt[7]
     delta_s = theta_opt[8]
 
-    v, v_abs, v_sign = _get_force_model_grids(V, n_v, n_x, epsilon)
+    if v is None:
+        v, v_abs, v_sign = _get_force_model_grids(V, n_v, epsilon)
+        n_v = v.shape[-1]
+    else:
+        v = np.asarray(v, dtype=float)
+        v_abs = np.sqrt(v**2 + epsilon)
+        v_sign = np.sign(v)
+        n_v = v.shape[-1]
+
     mu = np.asarray(mu_expression(v, mu_s, v_s, delta_s), dtype=float)
     if mu.size == 1:
-        mu = np.full(n_v, mu.item(), dtype=float)
-    elif mu.size != n_v:
+        mu = np.full_like(v, mu.item(), dtype=float)
+    elif mu.shape != v.shape:
+        if v.ndim == 1 and mu.size == n_v:
+            mu = mu.reshape(v.shape)
+        elif mu.size == v.size:
+            mu = mu.reshape(v.shape)
+        else:
+            raise ValueError(
+                "mu_expression must return either a scalar or an array with the same "
+                f"shape as v. Got mu shape {mu.shape} for v shape {v.shape}."
+            )
+
+    if v.ndim == 1:
+        v_abs = v_abs[None, :]
+        v_sign = v_sign[None, :]
+        mu = mu[None, :]
+    elif v.shape[0] != Fz_rep.size:
         raise ValueError(
-            f"mu_expression must return either a scalar or an array of length {n_v}, "
-            f"got shape {mu.shape}"
+            f"When v is 2D, its first dimension must match len(Fz_rep). "
+            f"Got v shape {v.shape} and len(Fz_rep)={Fz_rep.size}."
         )
 
-    a = k0[:, None] * v_abs[None, :] / (V * mu[None, :])
+    a = k0[:, None] * v_abs / (V * mu)
     aL = a * L[:, None]
     F_b = (
-        -mu[None, :]
+        -mu
         * ((np.exp(-aL) - 1) / aL + 1)
         * Fz_rep[:, None]
-        * v_sign[None, :]
+        * v_sign
         * mu_d[:, None]
     )
 

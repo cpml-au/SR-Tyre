@@ -6,7 +6,6 @@ from flex.gp.util import (
 from flex.gp import regressor as gps
 from flex.gp.primitives import add_primitives_to_pset_from_dict
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
 from deap import gp
 import optuna
@@ -33,16 +32,13 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
 MODEL_V = 16
 MODEL_N_V = 200
-MODEL_N_X = 100
 PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
 
 
 # --- Custom generate dataset function ---
-def generate_dataset(scaleXy: bool = True):
+def generate_dataset():
     np.random.seed(42)
     num_variables = 1
-    scaler_X = None
-    scaler_y = None
 
     (
         X_train,
@@ -60,25 +56,8 @@ def generate_dataset(scaleXy: bool = True):
     X_train = X_train.reshape(-1, 1)
     X_val = X_val.reshape(-1, 1)
     X_test = X_test.reshape(-1, 1)
-    y_train = y_train.reshape(-1, 1)
-    y_val = y_val.reshape(-1, 1)
-    y_test = y_test.reshape(-1, 1)
 
     num_variables = X_train.shape[1]
-
-    if scaleXy:
-        scaler_X = StandardScaler()
-        scaler_y = StandardScaler()
-
-        X_train = scaler_X.fit_transform(X_train)
-        X_val = scaler_X.transform(X_val)
-        y_train = scaler_y.fit_transform(y_train)
-        y_val = scaler_y.transform(y_val)
-        X_test = scaler_X.transform(X_test)
-
-    y_train = y_train.flatten()
-    y_val = y_val.flatten()
-    y_test = y_test.flatten()
 
     num_train_points = X_train.shape[0]
 
@@ -89,8 +68,6 @@ def generate_dataset(scaleXy: bool = True):
         y_val,
         X_test,
         y_test,
-        scaler_X,
-        scaler_y,
         num_variables,
         num_train_points,
         Fz_train_rep,
@@ -132,8 +109,6 @@ def build_regressor(
     params,
     cfgfile,
     train_Fz_rep,
-    scaler_X,
-    scaler_y,
 ):
     regressor_params, config = load_config_data(cfgfile)
     regressor_params["num_individuals"] = params["num_individuals"]
@@ -146,8 +121,6 @@ def build_regressor(
         "penalty": penalty,
         "fitness_scale": fitness_scale,
         "train_Fz_rep": train_Fz_rep,
-        "scaler_X": scaler_X,
-        "scaler_y": scaler_y,
     }
 
     pset = gp.PrimitiveSetTyped("Main", [float] * num_variables, float)
@@ -184,8 +157,6 @@ def optimize(
     val_y,
     val_Fz_rep,
     train_Fz_rep,
-    scaler_X,
-    scaler_y,
     grid_search_parameters,
     cfgfile,
 ):
@@ -199,16 +170,12 @@ def optimize(
         params,
         cfgfile,
         train_Fz_rep,
-        scaler_X,
-        scaler_y,
     )
     gpsr.fit(X, y)
     validation_predictions = predict_force_model_with_regressor(
         gpsr,
         X_val,
         val_Fz_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
     )
     validation_score = r2_score(val_y, validation_predictions)
     return validation_score
@@ -231,9 +198,7 @@ def main():
         "num_islands": [1],
     }
 
-    regressor_params, config_file_data = load_config_data(str(CONFIG_PATH))
-
-    scaleXy = config_file_data["gp"]["scaleXy"]
+    regressor_params, _ = load_config_data(str(CONFIG_PATH))
 
     # generate training and test datasets
     (
@@ -243,15 +208,13 @@ def main():
         y_val,
         X_test,
         y_test,
-        scaler_X,
-        scaler_y,
         num_variables,
         _,
         train_Fz_rep,
         val_Fz_rep,
         test_Fz_rep,
         Fz_overall_rep,
-    ) = generate_dataset(scaleXy=scaleXy)
+    ) = generate_dataset()
 
     print_dataset_info(
         X_train,
@@ -274,8 +237,6 @@ def main():
                 val_y=y_val,
                 val_Fz_rep=val_Fz_rep,
                 train_Fz_rep=train_Fz_rep,
-                scaler_X=scaler_X,
-                scaler_y=scaler_y,
                 grid_search_parameters=grid_search_parameters,
                 cfgfile=str(CONFIG_PATH),
             ),
@@ -293,16 +254,12 @@ def main():
             best_params,
             str(CONFIG_PATH),
             train_Fz_rep,
-            scaler_X,
-            scaler_y,
         )
         best_gpsr.fit(X_train, y_train)
         best_validation_predictions = predict_force_model_with_regressor(
             best_gpsr,
             X_val,
             val_Fz_rep,
-            scaler_X=scaler_X,
-            scaler_y=scaler_y,
         )
         best_validation_score = r2_score(
             y_val,
@@ -315,8 +272,6 @@ def main():
             best_params,
             str(CONFIG_PATH),
             train_Fz_rep,
-            scaler_X,
-            scaler_y,
         )
         best_gpsr.fit(X_train, y_train)
 
@@ -333,8 +288,6 @@ def main():
         X_test,
         y_test,
         test_Fz_rep,
-        scaler_X,
-        scaler_y,
         predict_force_model_with_regressor,
     )
 
@@ -344,11 +297,8 @@ def main():
         X_plot,
         y_plot,
         Fz_rep=Fz_overall_rep,
-        scaler_X=scaler_X,
-        scaler_y=scaler_y,
         V=MODEL_V,
         n_v=MODEL_N_V,
-        n_x=MODEL_N_X,
         mu_expression=make_mu_expression_from_regressor(best_gpsr),
         output_path=PLOT_PATH,
         show=False,
