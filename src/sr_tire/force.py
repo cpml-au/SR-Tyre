@@ -37,10 +37,10 @@ def compute_force_model(
 
     if mu_expression is None:
         mu_expression = stribeck
-        # mu_s = mu_s_bar
-        mu_s = theta_opt[6]
-        v_s = theta_opt[7]
-        delta_s = theta_opt[8]
+
+    mu_s = theta_opt[6]
+    v_s = theta_opt[7]
+    delta_s = theta_opt[8]
 
     # L = a_1 + a_2 * sqrt(Fz); Fz is bin-dependent representative load
     L = theta_opt[0] + theta_opt[1] * np.sqrt(Fz_rep)

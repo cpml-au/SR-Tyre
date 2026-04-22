@@ -33,6 +33,8 @@ def predict_force_model_from_callable(
     def mu_expression(v, mu_s, v_s, delta_s):
         v_input = v.reshape(-1, 1)
         mu = eval_model(individual, v_input, consts)
+        if np.isscalar(mu) or mu.size == 1:
+            mu = np.full(v_input.shape, mu)
         return mu.reshape(v.shape)
 
     X_bins = reshape_flattened_bins(X, Fz_rep)

@@ -34,7 +34,6 @@ CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
 PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
 
 
-# --- Custom generate dataset function ---
 def generate_dataset():
     np.random.seed(42)
     num_variables = 1
@@ -144,10 +143,6 @@ def build_regressor(
     )
 
 
-# Custom optimization routine for Optuna.
-# Although OptunaSearchCV could be used for this example,
-# in practice one often needs a custom objective function.
-# This shows how to define one and integrate it with Flex.
 def optimize(
     trial,
     X,
@@ -199,7 +194,6 @@ def main():
 
     regressor_params, _ = load_config_data(str(CONFIG_PATH))
 
-    # generate training and test datasets
     (
         X_train,
         y_train,
