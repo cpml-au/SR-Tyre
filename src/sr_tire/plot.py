@@ -21,6 +21,7 @@ def plot_force_model_data(
     color=(0.55, 0.80, 0.95),
     xlabel="Relative velocity v (m/s)",
     ylabel="Lateral force Fy (kN)",
+    x_limits=None,
     output_path=None,
     show=True,
 ):
@@ -47,17 +48,31 @@ def plot_force_model_data(
     plt.figure()
     colors = [color] if Fz_rep.size == 1 else plt.cm.viridis(np.linspace(0.15, 0.85, Fz_rep.size))
     for i, Fz_bin in enumerate(Fz_rep):
+        x_data = -X_bins[i] * V
+        y_data = y_bins[i] * Fz_bin / 1000
+        v_model = v
+        f_model = F_b[i] / 1000
+
+        if x_limits is not None:
+            x_min, x_max = x_limits
+            data_mask = (x_data >= x_min) & (x_data <= x_max)
+            model_mask = (v_model >= x_min) & (v_model <= x_max)
+            x_data = x_data[data_mask]
+            y_data = y_data[data_mask]
+            v_model = v_model[model_mask]
+            f_model = f_model[model_mask]
+
         plt.plot(
-            -X_bins[i] * V,
-            y_bins[i] * Fz_bin / 1000,
+            x_data,
+            y_data,
             "o",
             color=colors[i],
             markersize=4,
             label=f"Data (Fz={Fz_bin:.1f} N)",
         )
         plt.plot(
-            v,
-            F_b[i] / 1000,
+            v_model,
+            f_model,
             linewidth=1,
             color=colors[i],
             label=f"Model (Fz={Fz_bin:.1f} N)",
@@ -66,6 +81,8 @@ def plot_force_model_data(
     plt.grid(True)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    if x_limits is not None:
+        plt.xlim(*x_limits)
     plt.legend()
 
     if output_path is not None:

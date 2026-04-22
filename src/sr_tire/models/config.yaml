@@ -1,17 +1,18 @@
 gp:
-  num_individuals: 500 # 1000
+  num_individuals: 800 # 1000
   generations: 20 # 200
   multi_island:
     num_islands: 4 # 15
     migration: { "freq": 10, "frac": 0.05 }
-  crossover_prob: 0.
-  mut_prob: 1.
+  variation_mechanism: varOr
+  crossover_prob: 0.2
+  mut_prob: 0.8
   frac_elitist: 0.
   min_: 2
   max_: 4
   overlapping_generation: True
   validate: False
-  penalty: { "reg_param": 0. }
+  penalty: { "reg_param": 1.e-5 }
   select:
     # fun: tools.selection.tournament_with_elitism
     # kargs: "{'tournsize': 2, 'stochastic_tourn': { 'enabled': True, 'prob': [0.7, 0.3] }}"
@@ -50,13 +51,13 @@ gp:
         { "name": "add", "dimension": null, "rank": null },
         { "name": "sub", "dimension": null, "rank": null },
         { "name": "mul", "dimension": null, "rank": null },
-        # { "name": "div", "dimension": null, "rank": null },
-        { "name": "aq", "dimension": null, "rank": null },
+        { "name": "div", "dimension": null, "rank": null },
+        # { "name": "aq", "dimension": null, "rank": null },
         # { "name": "square", "dimension": null, "rank": null },
         { "name": "sin", "dimension": null, "rank": null },
         # { "name": "arcsin", "dimension": null, "rank": null },
         # { "name": "cos", "dimension": null, "rank": null },
         # { "name": "arccos", "dimension": null, "rank": null },
         { "name": "exp", "dimension": null, "rank": null },
-        # { "name": "log", "dimension": null, "rank": null },
+        { "name": "log", "dimension": null, "rank": null },
       ]

@@ -114,7 +114,7 @@ def build_regressor(
 
     batch_size = config["gp"]["batch_size"]
     penalty = config["gp"]["penalty"]
-    fitness_scale = 1.0
+    fitness_scale = 1000.0
     common_params = {
         "penalty": penalty,
         "fitness_scale": fitness_scale,
@@ -292,6 +292,7 @@ def main():
         Fz_rep=Fz_overall_rep,
         V=MODEL_V,
         mu_expression=make_mu_expression_from_regressor(best_gpsr),
+        x_limits=(-5, 5),
         output_path=PLOT_PATH,
         show=False,
     )

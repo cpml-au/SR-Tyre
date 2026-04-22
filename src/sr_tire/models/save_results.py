@@ -30,7 +30,7 @@ def save_model_results(
     predict_force_model_with_regressor,
     results_path=RESULTS_PATH,
 ):
-    best_model = str(gpsr.get_best_individual_sympy())
+    best_model = str(gpsr.get_best_individual_sympy()).replace("ARG0", "v")
 
     y_train_pred = predict_force_model_with_regressor(
         gpsr,
