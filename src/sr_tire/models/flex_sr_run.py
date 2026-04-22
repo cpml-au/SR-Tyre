@@ -15,7 +15,7 @@ from pathlib import Path
 import ray
 
 from ..plot import plot_force_model_data
-from ..process_data import load_and_process_dataset, load_split_representative_loads
+from ..process_data import load_and_process_bins, make_datasets
 from .fitness import (
     assign_attributes,
     compute_attributes,
@@ -51,13 +51,11 @@ def generate_dataset(scaleXy: bool = True):
         y_val,
         X_test,
         y_test,
-    ) = load_and_process_dataset()
-    (
-        Fz_train_rep,
-        Fz_val_rep,
-        Fz_test_rep,
-        Fz_overall_rep,
-    ) = load_split_representative_loads()
+    ) = make_datasets()
+    _, _, Fz_overall_rep = load_and_process_bins()
+    Fz_train_rep = Fz_overall_rep[:3]
+    Fz_val_rep = Fz_overall_rep[3:4]
+    Fz_test_rep = Fz_overall_rep[4:5]
 
     X_train = X_train.reshape(-1, 1)
     X_val = X_val.reshape(-1, 1)

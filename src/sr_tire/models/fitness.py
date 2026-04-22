@@ -9,6 +9,7 @@ import pygmo as pg
 from sklearn.metrics import r2_score
 
 from ..force import compute_force_model
+from ..process_data import reshape_flattened_bins
 
 
 MODEL_V = 16
@@ -42,6 +43,7 @@ def predict_force_model_from_callable(
     consts=[],
 ):
     max_abs_prediction = 1e8
+    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
 
     def mu_expression(v, mu_s, v_s, delta_s):
         v_input = np.asarray(v).reshape(-1, 1)
@@ -50,7 +52,7 @@ def predict_force_model_from_callable(
         return np.nan_to_num(mu, nan=1.0, posinf=1e8, neginf=-1e8)
 
     v_model, F_b = compute_force_model(
-        np.array([Fz_rep]),
+        Fz_rep,
         V=MODEL_V,
         n_v=MODEL_N_V,
         n_x=MODEL_N_X,
@@ -58,23 +60,31 @@ def predict_force_model_from_callable(
     )
 
     X_raw = inverse_transform_features(X, scaler_X)
-    v_query = -X_raw * MODEL_V
-    y_model = np.asarray(F_b[0] / Fz_rep, dtype=float)
-    y_model = np.nan_to_num(
-        y_model,
-        nan=0.0,
-        posinf=max_abs_prediction,
-        neginf=-max_abs_prediction,
-    )
-    y_model = np.clip(y_model, -max_abs_prediction, max_abs_prediction)
-    y_pred = np.interp(v_query, v_model, y_model)
-    y_pred = np.nan_to_num(
-        y_pred,
-        nan=0.0,
-        posinf=max_abs_prediction,
-        neginf=-max_abs_prediction,
-    )
-    y_pred = np.clip(y_pred, -max_abs_prediction, max_abs_prediction)
+    X_bins = reshape_flattened_bins(X_raw, Fz_rep)
+    y_pred_bins = []
+
+    for i, Fz_bin in enumerate(Fz_rep):
+        v_query = -X_bins[i] * MODEL_V
+        y_model = np.asarray(F_b[i] / Fz_bin, dtype=float)
+        y_model = np.nan_to_num(
+            y_model,
+            nan=0.0,
+            posinf=max_abs_prediction,
+            neginf=-max_abs_prediction,
+        )
+        y_model = np.clip(y_model, -max_abs_prediction, max_abs_prediction)
+        y_pred_bin = np.interp(v_query, v_model, y_model)
+        y_pred_bin = np.nan_to_num(
+            y_pred_bin,
+            nan=0.0,
+            posinf=max_abs_prediction,
+            neginf=-max_abs_prediction,
+        )
+        y_pred_bins.append(
+            np.clip(y_pred_bin, -max_abs_prediction, max_abs_prediction)
+        )
+
+    y_pred = np.concatenate(y_pred_bins)
 
     if scaler_y is None:
         return y_pred

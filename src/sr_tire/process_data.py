@@ -7,21 +7,6 @@ from scipy.interpolate import PchipInterpolator
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
-def flatten_bins(bins):
-    non_empty_bins = [bin_values for bin_values in bins if len(bin_values) > 0]
-    if not non_empty_bins:
-        return np.array([])
-    return np.concatenate(non_empty_bins)
-
-
-def _mean_or_nan(values):
-    values = np.asarray(values, dtype=float)
-    finite_values = values[np.isfinite(values)]
-    if finite_values.size == 0:
-        return np.nan
-    return float(np.mean(finite_values))
-
-
 def load_and_process_bins(data_type=1, n_bins=5, n_points=200):
     if data_type == 0:
         df = pd.read_csv(DATA_DIR / "longitudinal_tire_test.csv")
@@ -116,7 +101,7 @@ def load_and_process_bins(data_type=1, n_bins=5, n_points=200):
     return x_new, y_new, Fz_rep
 
 
-def load_and_process_dataset(data_type=1, n_bins=5, n_points=200):
+def make_datasets(data_type=1, n_bins=5, n_points=200):
     x_bins, y_bins, _ = load_and_process_bins(
         data_type=data_type,
         n_bins=n_bins,
@@ -124,26 +109,30 @@ def load_and_process_dataset(data_type=1, n_bins=5, n_points=200):
     )
 
     # Use bins 1-3 for training, bin 4 for validation, and bin 5 for testing.
-    X_train = flatten_bins(x_bins[: min(3, len(x_bins))])
-    y_train = flatten_bins(y_bins[: min(3, len(y_bins))])
-    X_val = flatten_bins(x_bins[3:4])
-    y_val = flatten_bins(y_bins[3:4])
-    X_test = flatten_bins(x_bins[4:5])
-    y_test = flatten_bins(y_bins[4:5])
+    train_x_bins = x_bins[: min(3, len(x_bins))]
+    train_y_bins = y_bins[: min(3, len(y_bins))]
+    val_x_bins = x_bins[3:4]
+    val_y_bins = y_bins[3:4]
+    test_x_bins = x_bins[4:5]
+    test_y_bins = y_bins[4:5]
+
+    X_train = np.concatenate(train_x_bins)
+    y_train = np.concatenate(train_y_bins)
+    X_val = np.concatenate(val_x_bins)
+    y_val = np.concatenate(val_y_bins)
+    X_test = np.concatenate(test_x_bins)
+    y_test = np.concatenate(test_y_bins)
 
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def load_split_representative_loads(data_type=1, n_bins=5, n_points=200):
-    _, _, Fz_rep = load_and_process_bins(
-        data_type=data_type,
-        n_bins=n_bins,
-        n_points=n_points,
-    )
+def reshape_flattened_bins(values, Fz_rep):
+    values = np.asarray(values, dtype=float).reshape(-1)
+    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
 
-    Fz_train_rep = _mean_or_nan(Fz_rep[: min(3, len(Fz_rep))])
-    Fz_val_rep = _mean_or_nan(Fz_rep[3:4])
-    Fz_test_rep = _mean_or_nan(Fz_rep[4:5])
-    Fz_overall_rep = _mean_or_nan(Fz_rep)
+    if values.size % Fz_rep.size != 0:
+        raise ValueError(
+            f"Cannot reshape {values.size} values into {Fz_rep.size} load bins."
+        )
 
-    return Fz_train_rep, Fz_val_rep, Fz_test_rep, Fz_overall_rep
+    return values.reshape(Fz_rep.size, -1)

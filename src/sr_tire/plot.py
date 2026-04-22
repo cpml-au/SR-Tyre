@@ -2,8 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-from .force import DEFAULT_THETA_OPT, compute_force_model
-from .process_data import load_and_process_dataset, load_split_representative_loads
+from sr_tire.force import DEFAULT_THETA_OPT, compute_force_model
+from sr_tire.process_data import (
+    load_and_process_bins,
+    make_datasets,
+    reshape_flattened_bins,
+)
 
 
 def plot_force_model_data(
@@ -37,7 +41,11 @@ def plot_force_model_data(
         y_plot = y
 
     if Fz_rep is None:
-        _, _, _, Fz_rep = load_split_representative_loads()
+        _, _, Fz_rep = load_and_process_bins()
+
+    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
+    X_bins = reshape_flattened_bins(X_plot, Fz_rep)
+    y_bins = reshape_flattened_bins(y_plot, Fz_rep)
 
     model_kwargs = {
         "theta_opt": theta_opt,
@@ -49,18 +57,26 @@ def plot_force_model_data(
     if mu_expression is not None:
         model_kwargs["mu_expression"] = mu_expression
 
-    v, F_b = compute_force_model(np.array([Fz_rep]), **model_kwargs)
+    v, F_b = compute_force_model(Fz_rep, **model_kwargs)
 
     plt.figure()
-    plt.plot(
-        -X_plot * V,
-        y_plot * Fz_rep / 1000,
-        "o",
-        color=color,
-        markersize=4,
-        label="Data",
-    )
-    plt.plot(v, F_b[0] / 1000, linewidth=1, label=f"Model (Fz={Fz_rep:.1f} N)")
+    colors = [color] if Fz_rep.size == 1 else plt.cm.viridis(np.linspace(0.15, 0.85, Fz_rep.size))
+    for i, Fz_bin in enumerate(Fz_rep):
+        plt.plot(
+            -X_bins[i] * V,
+            y_bins[i] * Fz_bin / 1000,
+            "o",
+            color=colors[i],
+            markersize=4,
+            label=f"Data (Fz={Fz_bin:.1f} N)",
+        )
+        plt.plot(
+            v,
+            F_b[i] / 1000,
+            linewidth=1,
+            color=colors[i],
+            label=f"Model (Fz={Fz_bin:.1f} N)",
+        )
 
     plt.grid(True)
     plt.xlabel(xlabel)
@@ -79,15 +95,15 @@ def plot_force_model_data(
 
 
 def main():
-    X_train, y_train, X_val, y_val, X_test, y_test = load_and_process_dataset(data_type=1)
-    _, _, _, Fz_overall_rep = load_split_representative_loads(data_type=1)
+    X_train, y_train, X_val, y_val, X_test, y_test = make_datasets(data_type=1)
+    _, _, Fz_all = load_and_process_bins(data_type=1)
     X = np.concatenate([X_train, X_val, X_test])
     y = np.concatenate([y_train, y_val, y_test])
 
     plot_force_model_data(
         X,
         y,
-        Fz_rep=Fz_overall_rep,
+        Fz_rep=Fz_all,
         theta_opt=DEFAULT_THETA_OPT,
     )
 
