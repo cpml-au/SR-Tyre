@@ -2,6 +2,8 @@ from functools import lru_cache
 
 import numpy as np
 
+MODEL_V = 16
+
 # fix with paper values
 DEFAULT_THETA_OPT = np.array([
     0.0668, 0.0001, 360.4850, 0.0230,
@@ -10,7 +12,7 @@ DEFAULT_THETA_OPT = np.array([
 ])
 
 
-def default_mu_expression(v, mu_s, v_s, delta_s):
+def stribeck(v, mu_s, v_s, delta_s):
     return 1 + (mu_s - 1) * np.exp(-np.abs(v / v_s) ** delta_s)
 
 
@@ -25,7 +27,7 @@ def _get_force_model_grids(V, n_v, epsilon):
 def compute_force_model(
     Fz_rep,
     theta_opt=None,
-    V=16,
+    V=MODEL_V,
     n_v=200,
     epsilon=1e-12,
     mu_expression=None,
@@ -35,55 +37,28 @@ def compute_force_model(
         theta_opt = DEFAULT_THETA_OPT
 
     if mu_expression is None:
-        mu_expression = default_mu_expression
-
-    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float))
+        mu_expression = stribeck
+        # mu_s = mu_s_bar
+        mu_s = theta_opt[6]
+        v_s = theta_opt[7]
+        delta_s = theta_opt[8]
 
     # L = a_1 + a_2 * sqrt(Fz); Fz is bin-dependent representative load
     L = theta_opt[0] + theta_opt[1] * np.sqrt(Fz_rep)
-    p = Fz_rep / L
 
     # mu_d = theta = a_5 - a_6 * Fz
     mu_d = theta_opt[4] - theta_opt[5] * Fz_rep
     # k0 = k0_paper/theta = (a_3 - a_4 * Fz) / mu_d
     k0 = (theta_opt[2] - theta_opt[3] * Fz_rep) / mu_d
-    # mu_s = mu_s_bar
-    mu_s = theta_opt[6]
-    v_s = theta_opt[7]
-    delta_s = theta_opt[8]
 
     if v is None:
         v, v_abs, v_sign = _get_force_model_grids(V, n_v, epsilon)
-        n_v = v.shape[-1]
     else:
-        v = np.asarray(v, dtype=float)
         v_abs = np.sqrt(v**2 + epsilon)
         v_sign = np.sign(v)
         n_v = v.shape[-1]
 
-    mu = np.asarray(mu_expression(v, mu_s, v_s, delta_s), dtype=float)
-    if mu.size == 1:
-        mu = np.full_like(v, mu.item(), dtype=float)
-    elif mu.shape != v.shape:
-        if v.ndim == 1 and mu.size == n_v:
-            mu = mu.reshape(v.shape)
-        elif mu.size == v.size:
-            mu = mu.reshape(v.shape)
-        else:
-            raise ValueError(
-                "mu_expression must return either a scalar or an array with the same "
-                f"shape as v. Got mu shape {mu.shape} for v shape {v.shape}."
-            )
-
-    if v.ndim == 1:
-        v_abs = v_abs[None, :]
-        v_sign = v_sign[None, :]
-        mu = mu[None, :]
-    elif v.shape[0] != Fz_rep.size:
-        raise ValueError(
-            f"When v is 2D, its first dimension must match len(Fz_rep). "
-            f"Got v shape {v.shape} and len(Fz_rep)={Fz_rep.size}."
-        )
+    mu = mu_expression(v, mu_s, v_s, delta_s)
 
     a = k0[:, None] * v_abs / (V * mu)
     aL = a * L[:, None]

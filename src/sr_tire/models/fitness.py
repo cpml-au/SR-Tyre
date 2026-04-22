@@ -8,11 +8,10 @@ import numpy as np
 import pygmo as pg
 from sklearn.metrics import r2_score
 
-from ..force import compute_force_model
+from ..force import MODEL_V, compute_force_model
 from ..process_data import reshape_flattened_bins
 
 
-MODEL_V = 16
 PSO_GENERATIONS = 20
 PSO_SWARM_SIZE = 50
 
@@ -34,7 +33,7 @@ def predict_force_model_from_callable(
     def mu_expression(v, mu_s, v_s, delta_s):
         v_input = v.reshape(-1, 1)
         mu = eval_model(individual, v_input, consts)
-        return np.asarray(mu, dtype=float).reshape(v.shape)
+        return mu.reshape(v.shape)
 
     X_bins = reshape_flattened_bins(X, Fz_rep)
     v_bins = -X_bins * MODEL_V
@@ -44,19 +43,25 @@ def predict_force_model_from_callable(
         mu_expression=mu_expression,
         v=v_bins,
     )
-    return (F_b / Fz_rep[:, None]).reshape(-1)
+    return F_b.reshape(-1)
+
+
+def normalize_force_predictions(force_pred, Fz_rep):
+    force_bins = reshape_flattened_bins(force_pred, Fz_rep)
+    return (force_bins / Fz_rep[:, None]).reshape(-1)
 
 
 def predict_force_model_with_regressor(gpsr, X, Fz_rep):
     toolbox, _ = gpsr._GPSymbolicRegressor__creator_toolbox_pset_config()
     individual, _ = compile_individual_with_consts(gpsr._best, toolbox)
     consts = getattr(gpsr._best, "consts", [])
-    return predict_force_model_from_callable(
+    force_pred = predict_force_model_from_callable(
         individual,
         X,
         Fz_rep,
         consts=consts,
     )
+    return normalize_force_predictions(force_pred, Fz_rep)
 
 
 def compute_force_model_MSE(
@@ -66,12 +71,13 @@ def compute_force_model_MSE(
     Fz_rep,
     consts=[],
 ):
-    y_pred = predict_force_model_from_callable(
+    force_pred = predict_force_model_from_callable(
         individual,
         X,
         Fz_rep,
         consts=consts,
     )
+    y_pred = normalize_force_predictions(force_pred, Fz_rep)
     mse = np.mean((y - y_pred) ** 2)
 
     if np.isnan(mse) or np.isinf(mse):

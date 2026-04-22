@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-from sr_tire.force import DEFAULT_THETA_OPT, compute_force_model
+from sr_tire.force import DEFAULT_THETA_OPT, MODEL_V, compute_force_model
 from sr_tire.process_data import (
     load_and_process_bins,
     make_datasets,
@@ -15,7 +15,7 @@ def plot_force_model_data(
     y,
     Fz_rep=None,
     theta_opt=None,
-    V=16,
+    V=MODEL_V,
     n_v=200,
     mu_expression=None,
     color=(0.55, 0.80, 0.95),
@@ -24,13 +24,13 @@ def plot_force_model_data(
     output_path=None,
     show=True,
 ):
-    X = np.asarray(X, dtype=float).reshape(-1)
-    y = np.asarray(y, dtype=float).reshape(-1)
+    X = X.reshape(-1)
+    y = y.reshape(-1)
 
     if Fz_rep is None:
         _, _, Fz_rep = load_and_process_bins()
 
-    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
+    Fz_rep = np.atleast_1d(Fz_rep).reshape(-1)
     X_bins = reshape_flattened_bins(X, Fz_rep)
     y_bins = reshape_flattened_bins(y, Fz_rep)
 

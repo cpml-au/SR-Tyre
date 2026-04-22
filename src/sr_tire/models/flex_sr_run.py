@@ -13,6 +13,7 @@ from optuna.samplers import TPESampler
 from pathlib import Path
 import ray
 
+from ..force import MODEL_V
 from ..plot import plot_force_model_data
 from ..process_data import load_and_process_bins, make_datasets
 from .fitness import (
@@ -30,8 +31,6 @@ from functools import partial
 num_cpus = 1
 ROOT_DIR = Path(__file__).resolve().parents[3]
 CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
-MODEL_V = 16
-MODEL_N_V = 200
 PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
 
 
@@ -82,9 +81,9 @@ def make_mu_expression_from_regressor(gpsr):
     consts = getattr(gpsr._best, "consts", [])
 
     def mu_expression(v, mu_s, v_s, delta_s):
-        v_input = np.asarray(v).reshape(-1, 1)
+        v_input = v.reshape(-1, 1)
         mu = eval_model(individual, v_input, consts)
-        mu = np.asarray(mu, dtype=float).reshape(-1)
+        mu = mu.reshape(-1)
         return np.nan_to_num(mu, nan=1.0, posinf=1e8, neginf=-1e8)
 
     return mu_expression
@@ -298,7 +297,6 @@ def main():
         y_plot,
         Fz_rep=Fz_overall_rep,
         V=MODEL_V,
-        n_v=MODEL_N_V,
         mu_expression=make_mu_expression_from_regressor(best_gpsr),
         output_path=PLOT_PATH,
         show=False,

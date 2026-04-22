@@ -127,8 +127,7 @@ def make_datasets(data_type=1, n_bins=5, n_points=200):
 
 
 def reshape_flattened_bins(values, Fz_rep):
-    values = np.asarray(values, dtype=float).reshape(-1)
-    Fz_rep = np.atleast_1d(np.asarray(Fz_rep, dtype=float)).reshape(-1)
+    values = values.reshape(-1)
 
     if values.size % Fz_rep.size != 0:
         raise ValueError(

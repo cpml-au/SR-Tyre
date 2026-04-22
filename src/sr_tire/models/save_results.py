@@ -48,9 +48,9 @@ def save_model_results(
         test_Fz_rep,
     )
 
-    y_train_true = np.asarray(train_y)
-    y_val_true = np.asarray(val_y)
-    y_test_true = np.asarray(test_y)
+    y_train_true = train_y
+    y_val_true = val_y
+    y_test_true = test_y
 
     train_rmse, train_r2 = compute_regression_metrics(y_train_true, y_train_pred)
     val_rmse, val_r2 = compute_regression_metrics(y_val_true, y_val_pred)
