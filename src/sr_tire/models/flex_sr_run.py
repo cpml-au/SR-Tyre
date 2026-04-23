@@ -22,6 +22,7 @@ from ..plot import plot_force_model_data
 from ..process_data import load_and_process_bins, make_datasets
 from .fitness import (
     assign_attributes,
+    compute_force_model_MSE,
     compute_attributes,
     eval_model,
     predict,
@@ -114,6 +115,7 @@ def build_regressor(
     params,
     cfgfile,
     train_Fz_rep,
+    custom_logger=None,
 ):
     regressor_params, config = load_config_data(cfgfile)
     regressor_params["num_individuals"] = params["num_individuals"]
@@ -146,6 +148,7 @@ def build_regressor(
         batch_size=batch_size,
         num_cpus=num_cpus,
         print_log=True,
+        custom_logger=custom_logger,
         **regressor_params,
     )
 
@@ -200,12 +203,32 @@ def fit_regressor(
     seed,
 ):
     set_fit_seed(seed)
+    train_mse_history = []
+    val_mse_history = []
+
     gpsr = build_regressor(
         num_variables,
         params,
         cfgfile,
         train_Fz_rep,
     )
+    toolbox, _ = gpsr._GPSymbolicRegressor__creator_toolbox_pset_config()
+
+    def custom_logger(best_inds):
+        best_individual = best_inds[0]
+        train_mse_history.append(best_individual.train_mse)
+        compiled_individual, _ = compile_individual_with_consts(best_individual, toolbox)
+        consts = getattr(best_individual, "consts", [])
+        val_mse = compute_force_model_MSE(
+            compiled_individual,
+            X_val[:, 0],
+            y_val,
+            val_Fz_rep,
+            consts=consts,
+        )
+        val_mse_history.append(val_mse)
+
+    gpsr.custom_logger = custom_logger
     gpsr.fit(X_train, y_train)
     validation_predictions = predict_force_model_with_regressor(
         gpsr,
@@ -213,7 +236,12 @@ def fit_regressor(
         val_Fz_rep,
     )
     validation_score = r2_score(y_val, validation_predictions)
-    return gpsr, validation_score
+    return (
+        gpsr,
+        validation_score,
+        np.asarray(train_mse_history, dtype=float),
+        np.asarray(val_mse_history, dtype=float),
+    )
 
 
 def build_run_paths(run_index):
@@ -221,6 +249,8 @@ def build_run_paths(run_index):
     return (
         run_dir / "best_model_results.txt",
         run_dir / "best_model_plot.png",
+        run_dir / "train_mse_history.csv",
+        run_dir / "val_mse_history.csv",
     )
 
 
@@ -229,6 +259,8 @@ def save_run_outputs(
     gpsr,
     validation_score,
     params,
+    train_mse_history,
+    val_mse_history,
     X_train,
     y_train,
     train_Fz_rep,
@@ -242,7 +274,12 @@ def save_run_outputs(
     y_plot,
     Fz_overall_rep,
 ):
-    results_path, plot_path = build_run_paths(run_index)
+    (
+        results_path,
+        plot_path,
+        train_mse_history_path,
+        val_mse_history_path,
+    ) = build_run_paths(run_index)
     result_data = save_model_results(
         gpsr,
         validation_score,
@@ -270,12 +307,27 @@ def save_run_outputs(
         output_path=plot_path,
         show=False,
     )
+    train_mse_history_path.parent.mkdir(parents=True, exist_ok=True)
+    history_lines = ["generation,train_mse"]
+    history_lines.extend(
+        f"{generation},{train_mse}"
+        for generation, train_mse in enumerate(train_mse_history, start=1)
+    )
+    train_mse_history_path.write_text("\n".join(history_lines) + "\n")
+    val_history_lines = ["generation,val_mse"]
+    val_history_lines.extend(
+        f"{generation},{val_mse}"
+        for generation, val_mse in enumerate(val_mse_history, start=1)
+    )
+    val_mse_history_path.write_text("\n".join(val_history_lines) + "\n")
 
     return {
         "run_index": run_index,
         "validation_score": validation_score,
         "results_path": results_path,
         "plot_path": plot_path,
+        "train_mse_history_path": train_mse_history_path,
+        "val_mse_history_path": val_mse_history_path,
         **result_data,
     }
 
@@ -295,6 +347,8 @@ def save_run_summary(run_summaries, summary_path=RUN_SUMMARY_PATH):
                 f"  best_model: {run_summary['best_model']}",
                 f"  results_path: {run_summary['results_path']}",
                 f"  plot_path: {run_summary['plot_path']}",
+                f"  train_mse_history_path: {run_summary['train_mse_history_path']}",
+                f"  val_mse_history_path: {run_summary['val_mse_history_path']}",
                 "",
             ]
         )
@@ -453,7 +507,7 @@ def main():
     for run_index in range(1, num_runs + 1):
         run_seed = base_seed + run_index - 1
         print(f"Starting run {run_index}/{num_runs} with seed {run_seed}")
-        gpsr, validation_score = fit_regressor(
+        gpsr, validation_score, train_mse_history, val_mse_history = fit_regressor(
             num_variables,
             best_params,
             str(CONFIG_PATH),
@@ -470,6 +524,8 @@ def main():
             gpsr,
             validation_score,
             deepcopy(best_params),
+            train_mse_history,
+            val_mse_history,
             X_train,
             y_train,
             train_Fz_rep,

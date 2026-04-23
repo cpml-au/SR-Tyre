@@ -86,6 +86,8 @@ src/sr_tire/models/flex_runs/
 ```text
 src/sr_tire/models/flex_runs/run_001/best_model_results.txt
 src/sr_tire/models/flex_runs/run_001/best_model_plot.png
+src/sr_tire/models/flex_runs/run_001/train_mse_history.csv
+src/sr_tire/models/flex_runs/run_001/val_mse_history.csv
 ```
 
 - writes an aggregate run summary to:

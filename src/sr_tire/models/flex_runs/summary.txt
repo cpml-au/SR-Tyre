@@ -1,21 +1,25 @@
 run_001
   seed: 42
-  best_validation_score: 0.9903889256736634
-  train_r2: 0.9846699541347556
-  train_rmse: 0.0641920630317816
-  test_r2: 0.9893491831232349
-  test_rmse: 0.0467314635037593
-  best_model: log(Mul(v,Add(Mul(4.50044525560463, Pow(v, -1)), Mul(-1,Mul(0.11847610515380542,v))))))
+  best_validation_score: 0.9910095380329565
+  train_r2: 0.9876375397190891
+  train_rmse: 0.05764505541109574
+  test_r2: 0.9912532183282481
+  test_rmse: 0.042348893395015456
+  best_model: 1.15689847500068 + exp(-0.2*exp(v))/v**2
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_model_plot.png
+  train_mse_history_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/train_mse_history.csv
+  val_mse_history_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/val_mse_history.csv
 
 run_002
   seed: 43
-  best_validation_score: 0.9940351099220834
-  train_r2: 0.9864913110186344
-  train_rmse: 0.06025820738319601
-  test_r2: 0.9932259986165409
-  test_rmse: 0.03726838418323987
-  best_model: (-0.09613694547392911 + 4.851636058576004/v)*sin(0.2946184212657873*v)
+  best_validation_score: 0.9902462110948325
+  train_r2: 0.9857737161708018
+  train_rmse: 0.0618379866084338
+  test_r2: 0.990426755191258
+  test_rmse: 0.044304465933957995
+  best_model: 1.1320962509565522 + 0.68179063312096816/v**2
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_model_plot.png
+  train_mse_history_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/train_mse_history.csv
+  val_mse_history_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/val_mse_history.csv

@@ -17,16 +17,16 @@ def compute_regression_metrics(y_true, y_pred):
 
 
 def get_best_model_expression(gpsr):
-    try:
-        best_model = gpsr.get_best_individual_sympy()
-    except Exception:
-        try:
-            best_model = stringify_for_sympy(gpsr._best, conversion_rules, "c")
-        except Exception:
-            best_model = str(gpsr._best)
-            consts = getattr(gpsr._best, "consts", [])
-            if len(consts) > 0:
-                best_model = f"{best_model} ; consts={np.asarray(consts).tolist()}"
+    # try:
+    best_model = gpsr.get_best_individual_sympy()
+    # except Exception:
+    #     try:
+    #         best_model = stringify_for_sympy(gpsr._best, conversion_rules, "c")
+    #     except Exception:
+    #         best_model = str(gpsr._best)
+    #         consts = getattr(gpsr._best, "consts", [])
+    #         if len(consts) > 0:
+    #             best_model = f"{best_model} ; consts={np.asarray(consts).tolist()}"
     return str(best_model).replace("ARG0", "v")
 
 

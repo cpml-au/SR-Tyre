@@ -177,6 +177,7 @@ def compute_attributes(
     for i, tree in enumerate(individuals_batch):
         if individ_length[i] >= 50:
             consts = None
+            mse = 1e8
             fitness = (1e8,)
         else:
             mse, consts = eval_MSE_and_tune_constants(
@@ -194,13 +195,14 @@ def compute_attributes(
                     + penalty["reg_param"] * individ_length[i]
                 ),
             )
-        attributes[i] = {"consts": consts, "fitness": fitness}
+        attributes[i] = {"consts": consts, "fitness": fitness, "train_mse": mse}
     return attributes
 
 
 def assign_attributes(individuals_batch, attributes):
     for ind, attr in zip(individuals_batch, attributes):
         ind.consts = attr["consts"]
+        ind.train_mse = attr["train_mse"]
         ind.fitness.values = attr["fitness"]
 
 
