@@ -1,4 +1,9 @@
 import argparse
+import random
+from copy import deepcopy
+from functools import partial
+from pathlib import Path
+
 from flex.gp.util import (
     compile_individual_with_consts,
     load_config_data,
@@ -10,7 +15,6 @@ from sklearn.metrics import r2_score
 from deap import gp
 import optuna
 from optuna.samplers import TPESampler
-from pathlib import Path
 import ray
 
 from ..force import MODEL_V
@@ -25,13 +29,15 @@ from .fitness import (
     score,
 )
 from .save_results import RESULTS_PATH, save_model_results
-from functools import partial
 
 # set up number of cpus per ray worker
 num_cpus = 1
 ROOT_DIR = Path(__file__).resolve().parents[3]
 CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
 PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
+RUN_RESULTS_DIR = Path(__file__).resolve().with_name("flex_runs")
+RUN_SUMMARY_PATH = RUN_RESULTS_DIR / "summary.txt"
+RUN_SUMMARY_LATEX_PATH = RUN_RESULTS_DIR / "summary.tex"
 
 
 def generate_dataset():
@@ -73,6 +79,7 @@ def generate_dataset():
         Fz_test_rep,
         Fz_overall_rep,
     )
+
 
 def make_mu_expression_from_regressor(gpsr):
     toolbox, _ = gpsr._GPSymbolicRegressor__creator_toolbox_pset_config()
@@ -175,6 +182,186 @@ def optimize(
     return validation_score
 
 
+def set_fit_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+
+
+def fit_regressor(
+    num_variables,
+    params,
+    cfgfile,
+    train_Fz_rep,
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    val_Fz_rep,
+    seed,
+):
+    set_fit_seed(seed)
+    gpsr = build_regressor(
+        num_variables,
+        params,
+        cfgfile,
+        train_Fz_rep,
+    )
+    gpsr.fit(X_train, y_train)
+    validation_predictions = predict_force_model_with_regressor(
+        gpsr,
+        X_val,
+        val_Fz_rep,
+    )
+    validation_score = r2_score(y_val, validation_predictions)
+    return gpsr, validation_score
+
+
+def build_run_paths(run_index):
+    run_dir = RUN_RESULTS_DIR / f"run_{run_index:03d}"
+    return (
+        run_dir / "best_model_results.txt",
+        run_dir / "best_model_plot.png",
+    )
+
+
+def save_run_outputs(
+    run_index,
+    gpsr,
+    validation_score,
+    params,
+    X_train,
+    y_train,
+    train_Fz_rep,
+    X_val,
+    y_val,
+    val_Fz_rep,
+    X_test,
+    y_test,
+    test_Fz_rep,
+    X_plot,
+    y_plot,
+    Fz_overall_rep,
+):
+    results_path, plot_path = build_run_paths(run_index)
+    result_data = save_model_results(
+        gpsr,
+        validation_score,
+        params,
+        X_train,
+        y_train,
+        train_Fz_rep,
+        X_val,
+        y_val,
+        val_Fz_rep,
+        X_test,
+        y_test,
+        test_Fz_rep,
+        predict_force_model_with_regressor,
+        results_path=results_path,
+    )
+
+    plot_force_model_data(
+        X_plot,
+        y_plot,
+        Fz_rep=Fz_overall_rep,
+        V=MODEL_V,
+        mu_expression=make_mu_expression_from_regressor(gpsr),
+        x_limits=(-5, 5),
+        output_path=plot_path,
+        show=False,
+    )
+
+    return {
+        "run_index": run_index,
+        "validation_score": validation_score,
+        "results_path": results_path,
+        "plot_path": plot_path,
+        **result_data,
+    }
+
+
+def save_run_summary(run_summaries, summary_path=RUN_SUMMARY_PATH):
+    summary_lines = []
+    for run_summary in run_summaries:
+        summary_lines.extend(
+            [
+                f"run_{run_summary['run_index']:03d}",
+                f"  seed: {run_summary['seed']}",
+                f"  best_validation_score: {run_summary['validation_score']}",
+                f"  train_r2: {run_summary['train_r2']}",
+                f"  train_rmse: {run_summary['train_rmse']}",
+                f"  test_r2: {run_summary['test_r2']}",
+                f"  test_rmse: {run_summary['test_rmse']}",
+                f"  best_model: {run_summary['best_model']}",
+                f"  results_path: {run_summary['results_path']}",
+                f"  plot_path: {run_summary['plot_path']}",
+                "",
+            ]
+        )
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text("\n".join(summary_lines).rstrip() + "\n")
+
+
+def save_run_summary_latex(
+    run_summaries,
+    latex_path=RUN_SUMMARY_LATEX_PATH,
+):
+    if not run_summaries:
+        raise ValueError("run_summaries must contain at least one run")
+
+    metric_keys = [
+        ("train_r2", r"R^2 train"),
+        ("test_r2", r"R^2 test"),
+        ("train_rmse", "RMSE train"),
+        ("test_rmse", "RMSE test"),
+    ]
+    median_metrics = {
+        key: float(np.median([run_summary[key] for run_summary in run_summaries]))
+        for key, _ in metric_keys
+    }
+    best_test_run = max(run_summaries, key=lambda run_summary: run_summary["test_r2"])
+
+    def format_metric(value):
+        return f"{value:.6f}"
+
+    table_rows = [
+        "Median"
+        + "".join(f" & {format_metric(median_metrics[key])}" for key, _ in metric_keys)
+        + r" \\",
+        f"Best test $R^2$ (run {best_test_run['run_index']:03d})"
+        + "".join(
+            f" & {format_metric(best_test_run[key])}" for key, _ in metric_keys
+        )
+        + r" \\",
+    ]
+    header_cells = "Statistic" + "".join(
+        f" & ${label}$" if "R^2" in label else f" & {label}"
+        for _, label in metric_keys
+    )
+    latex_lines = [
+        r"\documentclass{article}",
+        r"\usepackage{booktabs}",
+        r"\begin{document}",
+        r"\section*{Flex SR Run Summary}",
+        f"Total runs: {len(run_summaries)}\\\\",
+        f"Best test $R^2$ run: {best_test_run['run_index']:03d}\\\\",
+        r"\begin{table}[ht]",
+        r"\centering",
+        r"\begin{tabular}{lrrrr}",
+        r"\toprule",
+        header_cells + r" \\",
+        r"\midrule",
+        *table_rows,
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"\caption{Median metrics across repeated Flex SR runs and the metrics of the run with the best test $R^2$.}",
+        r"\end{table}",
+        r"\end{document}",
+    ]
+    latex_path.parent.mkdir(parents=True, exist_ok=True)
+    latex_path.write_text("\n".join(latex_lines) + "\n")
+
+
 def main():
     if not ray.is_initialized():
         ray.init(runtime_env={"working_dir": str(ROOT_DIR)})
@@ -185,6 +372,18 @@ def main():
         action="store_true",
         help="Enable Optuna hyperparameter optimization.",
     )
+    parser.add_argument(
+        "--num-runs",
+        type=int,
+        default=1,
+        help="Override the number of repeated flex runs.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Base random seed used for repeated runs.",
+    )
     args = parser.parse_args()
 
     grid_search_parameters = {
@@ -193,6 +392,10 @@ def main():
     }
 
     regressor_params, _ = load_config_data(str(CONFIG_PATH))
+    num_runs = args.num_runs
+    if num_runs < 1:
+        raise ValueError("num_runs must be at least 1")
+    base_seed = args.seed
 
     (
         X_train,
@@ -236,42 +439,64 @@ def main():
             n_trials=20,
         )
         best_params = study.best_trial.params
-        best_validation_score = study.best_trial.value
     else:
         best_params = {
             "num_individuals": regressor_params["num_individuals"],
             "num_islands": regressor_params["num_islands"],
         }
-        best_gpsr = build_regressor(
-            num_variables,
-            best_params,
-            str(CONFIG_PATH),
-            train_Fz_rep,
-        )
-        best_gpsr.fit(X_train, y_train)
-        best_validation_predictions = predict_force_model_with_regressor(
-            best_gpsr,
-            X_val,
-            val_Fz_rep,
-        )
-        best_validation_score = r2_score(
-            y_val,
-            best_validation_predictions,
-        )
+    X_plot = np.concatenate([X_train[:, 0], X_val[:, 0], X_test[:, 0]])
+    y_plot = np.concatenate([y_train, y_val, y_test])
+    run_summaries = []
+    best_run = None
+    best_gpsr = None
 
-    if args.hpo:
-        best_gpsr = build_regressor(
+    for run_index in range(1, num_runs + 1):
+        run_seed = base_seed + run_index - 1
+        print(f"Starting run {run_index}/{num_runs} with seed {run_seed}")
+        gpsr, validation_score = fit_regressor(
             num_variables,
             best_params,
             str(CONFIG_PATH),
             train_Fz_rep,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            val_Fz_rep,
+            run_seed,
         )
-        best_gpsr.fit(X_train, y_train)
+        run_summary = save_run_outputs(
+            run_index,
+            gpsr,
+            validation_score,
+            deepcopy(best_params),
+            X_train,
+            y_train,
+            train_Fz_rep,
+            X_val,
+            y_val,
+            val_Fz_rep,
+            X_test,
+            y_test,
+            test_Fz_rep,
+            X_plot,
+            y_plot,
+            Fz_overall_rep,
+        )
+        run_summary["seed"] = run_seed
+        run_summaries.append(run_summary)
+
+        if best_run is None or validation_score > best_run["validation_score"]:
+            best_run = run_summary
+            best_gpsr = gpsr
+
+    save_run_summary(run_summaries)
+    save_run_summary_latex(run_summaries)
 
     save_model_results(
         best_gpsr,
-        best_validation_score,
-        best_params,
+        best_run["validation_score"],
+        deepcopy(best_params),
         X_train,
         y_train,
         train_Fz_rep,
@@ -284,8 +509,6 @@ def main():
         predict_force_model_with_regressor,
     )
 
-    X_plot = np.concatenate([X_train[:, 0], X_val[:, 0], X_test[:, 0]])
-    y_plot = np.concatenate([y_train, y_val, y_test])
     plot_force_model_data(
         X_plot,
         y_plot,
@@ -297,10 +520,14 @@ def main():
         show=False,
     )
 
-    print("Accuracy: {}".format(best_validation_score))
+    print("Accuracy: {}".format(best_run["validation_score"]))
     print("Best hyperparameters: {}".format(best_params))
+    print("Best run: {}".format(best_run["run_index"]))
     print("Best model results saved to {}".format(RESULTS_PATH))
     print("Best model plot saved to {}".format(PLOT_PATH))
+    print("Per-run results saved under {}".format(RUN_RESULTS_DIR))
+    print("Run summary saved to {}".format(RUN_SUMMARY_PATH))
+    print("LaTeX run summary saved to {}".format(RUN_SUMMARY_LATEX_PATH))
 
 
 if __name__ == "__main__":

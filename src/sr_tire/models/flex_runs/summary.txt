@@ -1,0 +1,21 @@
+run_001
+  seed: 42
+  best_validation_score: 0.9903889256736634
+  train_r2: 0.9846699541347556
+  train_rmse: 0.0641920630317816
+  test_r2: 0.9893491831232349
+  test_rmse: 0.0467314635037593
+  best_model: log(Mul(v,Add(Mul(4.50044525560463, Pow(v, -1)), Mul(-1,Mul(0.11847610515380542,v))))))
+  results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_model_results.txt
+  plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_model_plot.png
+
+run_002
+  seed: 43
+  best_validation_score: 0.9940351099220834
+  train_r2: 0.9864913110186344
+  train_rmse: 0.06025820738319601
+  test_r2: 0.9932259986165409
+  test_rmse: 0.03726838418323987
+  best_model: (-0.09613694547392911 + 4.851636058576004/v)*sin(0.2946184212657873*v)
+  results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_model_results.txt
+  plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_model_plot.png

@@ -39,6 +39,18 @@ To run a single training run without hyperparameter optimization:
 python -m sr_tire.models.flex_sr_run
 ```
 
+To run multiple independent training runs:
+
+```bash
+python -m sr_tire.models.flex_sr_run --num-runs 5
+```
+
+To control the base random seed used for repeated runs:
+
+```bash
+python -m sr_tire.models.flex_sr_run --num-runs 5 --seed 123
+```
+
 To run with Optuna HPO:
 
 ```bash
@@ -51,13 +63,42 @@ After running Flex SR, the script:
 
 - prints dataset summary information
 - fits the symbolic `mu(v)` model
-- saves model metrics and the best expression to:
+- saves the best overall model metrics and expression to:
 
 ```text
-models/best_model_results.txt
+src/sr_tire/models/best_model_results.txt
 ```
 
-- plots the best model together with the data at the end of the run
+- saves the best overall plot to:
+
+```text
+src/sr_tire/models/best_model_plot.png
+```
+
+- when `--num-runs` is greater than `1`, also saves per-run artifacts under:
+
+```text
+src/sr_tire/models/flex_runs/
+```
+
+- writes one subdirectory per run, for example:
+
+```text
+src/sr_tire/models/flex_runs/run_001/best_model_results.txt
+src/sr_tire/models/flex_runs/run_001/best_model_plot.png
+```
+
+- writes an aggregate run summary to:
+
+```text
+src/sr_tire/models/flex_runs/summary.txt
+```
+
+- writes a LaTeX summary document with median metrics and the best-test-`R^2` run to:
+
+```text
+src/sr_tire/models/flex_runs/summary.tex
+```
 
 ## Notes
 

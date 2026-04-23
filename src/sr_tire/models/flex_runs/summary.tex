@@ -1,0 +1,19 @@
+\documentclass{article}
+\usepackage{booktabs}
+\begin{document}
+\section*{Flex SR Run Summary}
+Total runs: 2\\
+Best test $R^2$ run: 002\\
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Statistic & $R^2 train$ & $R^2 test$ & RMSE train & RMSE test \\
+\midrule
+Median & 0.985581 & 0.991288 & 0.062225 & 0.042000 \\
+Best test $R^2$ (run 002) & 0.986491 & 0.993226 & 0.060258 & 0.037268 \\
+\bottomrule
+\end{tabular}
+\caption{Median metrics across repeated Flex SR runs and the metrics of the run with the best test $R^2$.}
+\end{table}
+\end{document}
