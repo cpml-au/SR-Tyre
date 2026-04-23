@@ -1,8 +1,8 @@
 gp:
-  num_individuals: 800 # 1000
-  generations: 2 # 200
+  num_individuals: 1000 # 1000
+  generations: 20 # 200
   multi_island:
-    num_islands: 4 # 15
+    num_islands: 1 # 15
     migration: { "freq": 10, "frac": 0.05 }
   variation_mechanism: varOr
   crossover_prob: 0.2
@@ -32,22 +32,9 @@ gp:
   primitives:
     imports:
       {
-        # "flex.gp.jax_primitives": ["jax_primitives"],
         "flex.gp.numpy_primitives": ["numpy_primitives"],
       }
     used: [
-        # { "name": "AddF", "dimension": null, "rank": null },
-        # { "name": "SubF", "dimension": null, "rank": null },
-        # { "name": "MulF", "dimension": null, "rank": null },
-        # { "name": "Div", "dimension": null, "rank": null },
-        # { "name": "SquareF", "dimension": null, "rank": null },
-        # { "name": "SinF", "dimension": null, "rank": null },
-        # { "name": "ArcsinF", "dimension": null, "rank": null },
-        # { "name": "CosF", "dimension": null, "rank": null },
-        # { "name": "ArccosF", "dimension": null, "rank": null },
-        # { "name": "ExpF", "dimension": null, "rank": null },
-        # { "name": "LogF", "dimension": null, "rank": null },
-        # { "name": "InvF", "dimension": null, "rank": null },
         { "name": "add", "dimension": null, "rank": null },
         { "name": "sub", "dimension": null, "rank": null },
         { "name": "mul", "dimension": null, "rank": null },
