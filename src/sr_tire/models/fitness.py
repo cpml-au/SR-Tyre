@@ -14,6 +14,30 @@ from ..process_data import reshape_flattened_bins
 
 PSO_GENERATIONS = 20
 PSO_SWARM_SIZE = 50
+MU_CHECK_V_MIN = -5.0
+MU_CHECK_V_MAX = 5.0
+MU_CHECK_NUM_POINTS = 201
+INVALID_MSE = 1e8
+
+
+def has_finite_mu_on_training_interval(individual, consts=None):
+    if consts is None:
+        consts = []
+
+    v_grid = np.linspace(MU_CHECK_V_MIN, MU_CHECK_V_MAX, MU_CHECK_NUM_POINTS).reshape(
+        -1, 1
+    )
+    try:
+        mu = np.asarray(eval_model(individual, v_grid, consts=consts))
+    except Exception:
+        return False
+
+    if mu.ndim == 0 or mu.size == 1:
+        mu = np.full(v_grid.shape[0], float(mu))
+    else:
+        mu = mu.reshape(-1)
+
+    return np.all(np.isfinite(mu))
 
 
 def eval_model(individual, X, consts=[]):
@@ -73,6 +97,9 @@ def compute_force_model_MSE(
     Fz_rep,
     consts=[],
 ):
+    if not has_finite_mu_on_training_interval(individual, consts=consts):
+        return INVALID_MSE
+
     force_pred = predict_force_model_from_callable(
         individual,
         X,
@@ -83,7 +110,7 @@ def compute_force_model_MSE(
     mse = np.mean((y - y_pred) ** 2)
 
     if np.isnan(mse) or np.isinf(mse):
-        mse = 1e8
+        mse = INVALID_MSE
 
     return mse
 
@@ -123,7 +150,7 @@ def eval_MSE_and_tune_constants(
         consts = pop.champion_x
 
         if np.isinf(mse) or np.isnan(mse):
-            mse = 1e8
+            mse = INVALID_MSE
     else:
         mse = compute_force_model_MSE(
             individual,
@@ -177,8 +204,8 @@ def compute_attributes(
     for i, tree in enumerate(individuals_batch):
         if individ_length[i] >= 50:
             consts = None
-            mse = 1e8
-            fitness = (1e8,)
+            mse = INVALID_MSE
+            fitness = (INVALID_MSE,)
         else:
             mse, consts = eval_MSE_and_tune_constants(
                 tree,

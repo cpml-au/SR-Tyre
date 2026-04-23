@@ -1,5 +1,5 @@
 gp:
-  num_individuals: 500 # 1000
+  num_individuals: 800 # 1000
   generations: 20 # 200
   multi_island:
     num_islands: 4 # 15
@@ -27,7 +27,7 @@ gp:
   crossover:
     fun: gp.cxOnePoint
     kargs: "{}"
-  batch_size: 10
+  batch_size: 30
   use_constants: True
   primitives:
     imports:

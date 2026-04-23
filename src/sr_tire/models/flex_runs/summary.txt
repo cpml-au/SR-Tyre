@@ -1,11 +1,11 @@
 run_001
   seed: 42
-  best_validation_score: 0.992875220598134
-  train_r2: 0.9881245613834282
-  train_rmse: 0.05649817713754596
-  test_r2: 0.9920606955948585
-  test_rmse: 0.04034680507939472
-  best_model: exp(3.692572266035007/(v**2 + exp(v) + 4.980872190780485))
+  best_validation_score: 0.9929408205911714
+  train_r2: 0.9882829647108258
+  train_rmse: 0.05612010505095651
+  test_r2: 0.9926540127168844
+  test_rmse: 0.03880994340095351
+  best_model: 1.1031921599115746 + 3.4342390765822024/((v - 1.3564332471200335)*(v - 0.7590195851651722) + exp(1.6154831332795452*v))
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_model_plot.png
   mu_plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_001/best_mu_plot.png
@@ -14,12 +14,12 @@ run_001
 
 run_002
   seed: 43
-  best_validation_score: 0.9935841418785333
-  train_r2: 0.9881846866517383
-  train_rmse: 0.05635497069291308
-  test_r2: 0.9931420113951855
-  test_rmse: 0.03749870785224114
-  best_model: -v/(v - 0.37960222709398343 + 1.9788025969461516/v) + 2.049879133939827
+  best_validation_score: 0.9924684406216348
+  train_r2: 0.9879559008522417
+  train_rmse: 0.056897969395808316
+  test_r2: 0.9922092462093092
+  test_rmse: 0.03996756253210108
+  best_model: 2.9212828956835064*exp(v - exp(v)) + 1.149825163023053
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_model_plot.png
   mu_plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_002/best_mu_plot.png
@@ -28,12 +28,12 @@ run_002
 
 run_003
   seed: 44
-  best_validation_score: 0.9929304001615601
-  train_r2: 0.9882377145095769
-  train_rmse: 0.05622836618213746
-  test_r2: 0.9920349547789167
-  test_rmse: 0.0404121583639945
-  best_model: -(v + 0.32678582321893465)/(v + 1.9389533104018744/v) + 2.0276117477268465
+  best_validation_score: 0.9927057605847084
+  train_r2: 0.9883487158524827
+  train_rmse: 0.05596242215190795
+  test_r2: 0.991658425958308
+  test_rmse: 0.041356323878686665
+  best_model: 1.0705123802948586 - 0.75225024104471705/(v - exp(v) + sin(exp(v)))
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_003/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_003/best_model_plot.png
   mu_plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_003/best_mu_plot.png
@@ -42,12 +42,12 @@ run_003
 
 run_004
   seed: 45
-  best_validation_score: 0.9926202175350398
-  train_r2: 0.9882487456914161
-  train_rmse: 0.056201993296164085
-  test_r2: 0.9923688483590453
-  test_rmse: 0.039556054365116375
-  best_model: exp(-3.522210439522815/((-0.64001280311273009*v + exp(v))*(v - 4.510292707463122)))
+  best_validation_score: 0.9930178174637476
+  train_r2: 0.9882807567943355
+  train_rmse: 0.0561253923384677
+  test_r2: 0.9923755080044596
+  test_rmse: 0.039538790470574806
+  best_model: 4.0585036732156135/(3.7647471452095105 - 2.3340498827252394/(-1.12077972243158*v + exp(v)))
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_004/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_004/best_model_plot.png
   mu_plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_004/best_mu_plot.png
@@ -56,12 +56,12 @@ run_004
 
 run_005
   seed: 46
-  best_validation_score: 0.9924485411166774
-  train_r2: 0.9882753225533841
-  train_rmse: 0.05613840356927512
-  test_r2: 0.9919735209774829
-  test_rmse: 0.040567706992380465
-  best_model: exp(-3.8571147507533237/((-0.673281665340703*v + exp(v))*(v - 4.778815331152719)))
+  best_validation_score: 0.9932020511444021
+  train_r2: 0.9882981852560038
+  train_rmse: 0.05608364291910445
+  test_r2: 0.9924306333215246
+  test_rmse: 0.03939559782954879
+  best_model: -4.982235317976585/(-4.6032872846740815 + 2.4468255494895086/(-v + 0.89301289009805359*exp(v)))
   results_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_005/best_model_results.txt
   plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_005/best_model_plot.png
   mu_plot_path: /Users/au731137/sr-tire/src/sr_tire/models/flex_runs/run_005/best_mu_plot.png
