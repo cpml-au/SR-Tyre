@@ -96,6 +96,37 @@ def plot_force_model_data(
         plt.close()
 
 
+def plot_mu_curve(
+    mu_expression,
+    x_limits=(-5, 5),
+    n_v=200,
+    color=(0.15, 0.35, 0.65),
+    xlabel="Relative velocity v (m/s)",
+    ylabel=r"$\mu(v)$",
+    output_path=None,
+    show=True,
+):
+    v = np.linspace(x_limits[0], x_limits[1], n_v)
+    mu = np.asarray(mu_expression(v, None, None, None)).reshape(-1)
+
+    plt.figure()
+    plt.plot(v, mu, color=color, linewidth=1.5)
+    plt.grid(True)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xlim(*x_limits)
+
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=200, bbox_inches="tight")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 if __name__ == "__main__":
     X_train, y_train, X_val, y_val, X_test, y_test = make_datasets(data_type=1)
     _, _, Fz_all = load_and_process_bins(data_type=1)

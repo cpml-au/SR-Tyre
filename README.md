@@ -75,6 +75,12 @@ src/sr_tire/models/best_model_results.txt
 src/sr_tire/models/best_model_plot.png
 ```
 
+- saves the best overall `mu(v)` plot to:
+
+```text
+src/sr_tire/models/best_mu_plot.png
+```
+
 - when `--num-runs` is greater than `1`, also saves per-run artifacts under:
 
 ```text
@@ -86,6 +92,7 @@ src/sr_tire/models/flex_runs/
 ```text
 src/sr_tire/models/flex_runs/run_001/best_model_results.txt
 src/sr_tire/models/flex_runs/run_001/best_model_plot.png
+src/sr_tire/models/flex_runs/run_001/best_mu_plot.png
 src/sr_tire/models/flex_runs/run_001/train_mse_history.csv
 src/sr_tire/models/flex_runs/run_001/val_mse_history.csv
 ```

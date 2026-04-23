@@ -18,7 +18,7 @@ from optuna.samplers import TPESampler
 import ray
 
 from ..force import MODEL_V
-from ..plot import plot_force_model_data
+from ..plot import plot_force_model_data, plot_mu_curve
 from ..process_data import load_and_process_bins, make_datasets
 from .fitness import (
     assign_attributes,
@@ -36,6 +36,7 @@ num_cpus = 1
 ROOT_DIR = Path(__file__).resolve().parents[3]
 CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
 PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
+MU_PLOT_PATH = Path(__file__).resolve().with_name("best_mu_plot.png")
 RUN_RESULTS_DIR = Path(__file__).resolve().with_name("flex_runs")
 RUN_SUMMARY_PATH = RUN_RESULTS_DIR / "summary.txt"
 RUN_SUMMARY_LATEX_PATH = RUN_RESULTS_DIR / "summary.tex"
@@ -149,6 +150,7 @@ def build_regressor(
         num_cpus=num_cpus,
         print_log=True,
         custom_logger=custom_logger,
+        remove_init_duplicates=True,
         **regressor_params,
     )
 
@@ -249,6 +251,7 @@ def build_run_paths(run_index):
     return (
         run_dir / "best_model_results.txt",
         run_dir / "best_model_plot.png",
+        run_dir / "best_mu_plot.png",
         run_dir / "train_mse_history.csv",
         run_dir / "val_mse_history.csv",
     )
@@ -277,6 +280,7 @@ def save_run_outputs(
     (
         results_path,
         plot_path,
+        mu_plot_path,
         train_mse_history_path,
         val_mse_history_path,
     ) = build_run_paths(run_index)
@@ -307,6 +311,12 @@ def save_run_outputs(
         output_path=plot_path,
         show=False,
     )
+    plot_mu_curve(
+        mu_expression=make_mu_expression_from_regressor(gpsr),
+        x_limits=(-5, 5),
+        output_path=mu_plot_path,
+        show=False,
+    )
     train_mse_history_path.parent.mkdir(parents=True, exist_ok=True)
     history_lines = ["generation,train_mse"]
     history_lines.extend(
@@ -326,6 +336,7 @@ def save_run_outputs(
         "validation_score": validation_score,
         "results_path": results_path,
         "plot_path": plot_path,
+        "mu_plot_path": mu_plot_path,
         "train_mse_history_path": train_mse_history_path,
         "val_mse_history_path": val_mse_history_path,
         **result_data,
@@ -347,6 +358,7 @@ def save_run_summary(run_summaries, summary_path=RUN_SUMMARY_PATH):
                 f"  best_model: {run_summary['best_model']}",
                 f"  results_path: {run_summary['results_path']}",
                 f"  plot_path: {run_summary['plot_path']}",
+                f"  mu_plot_path: {run_summary['mu_plot_path']}",
                 f"  train_mse_history_path: {run_summary['train_mse_history_path']}",
                 f"  val_mse_history_path: {run_summary['val_mse_history_path']}",
                 "",
@@ -575,12 +587,19 @@ def main():
         output_path=PLOT_PATH,
         show=False,
     )
+    plot_mu_curve(
+        mu_expression=make_mu_expression_from_regressor(best_gpsr),
+        x_limits=(-5, 5),
+        output_path=MU_PLOT_PATH,
+        show=False,
+    )
 
     print("Accuracy: {}".format(best_run["validation_score"]))
     print("Best hyperparameters: {}".format(best_params))
     print("Best run: {}".format(best_run["run_index"]))
     print("Best model results saved to {}".format(RESULTS_PATH))
     print("Best model plot saved to {}".format(PLOT_PATH))
+    print("Best mu(v) plot saved to {}".format(MU_PLOT_PATH))
     print("Per-run results saved under {}".format(RUN_RESULTS_DIR))
     print("Run summary saved to {}".format(RUN_SUMMARY_PATH))
     print("LaTeX run summary saved to {}".format(RUN_SUMMARY_LATEX_PATH))
