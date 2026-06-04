@@ -7,7 +7,7 @@ run_001
   train_rmse: 0.05801052299649398
   test_r2: 0.9903683424534963
   test_rmse: 0.044439425892989305
-  best_model: exp(Pow(Add(Pow(2.653795392042694, v), Mul(-1,v)), Mul(Mul(-1.0518744103721007, Pow(v, -1)),Add(-0.25389023077169814,v))))
+  best_model: exp((2.653795392042694**v - v)**(-1.0518744103721007*(v - 0.25389023077169814)/v))
   results_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_001/best_model_results.txt
   plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_001/best_model_plot.png
   mu_plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_001/best_mu_plot.png
@@ -23,7 +23,7 @@ run_002
   train_rmse: 0.05734141878041718
   test_r2: 0.9923455646383988
   test_rmse: 0.03961635395672773
-  best_model: Pow(Mul(Add(exp(v), Mul(-1,Add(v, Mul(-1,4.523097576683441)))), Pow(Add(exp(v),sin(-3.337965752292703)), -1)), exp(Add(Mul(v, Pow(1.98310976153892, -1)), Mul(-1,sin(1.466195053183902)))))
+  best_model: ((-v + exp(v) + 4.523097576683441)/(exp(v) + 0.1951134271579887))**(0.3698956748089789*exp(0.50425852335273*v))
   results_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_002/best_model_results.txt
   plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_002/best_model_plot.png
   mu_plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_002/best_mu_plot.png
@@ -39,7 +39,7 @@ run_003
   train_rmse: 0.05752945618169181
   test_r2: 0.9914368916973557
   test_rmse: 0.041901892825442835
-  best_model: Add(Pow(Add(Mul(v,v),Add(v, Mul(-1,v))), Mul(Add(4.5502355607120455, Mul(-1,v)),Pow(2.990483818894818, -4.071117863889617))),Pow(Pow(exp(v), Mul(-1.1966289335545817, Pow(-4.704378557433585, -1))), Add(Add(-0.438722691331237, Mul(-1,v)),Mul(v, Pow(-5.0, -1)))))
+  best_model: (v**2)**(0.052630117139399936 - 0.01156645989799352*v) + exp(v)**(-0.30523791883127389*v - 0.11159566770500179)
   results_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_003/best_model_results.txt
   plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_003/best_model_plot.png
   mu_plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_003/best_mu_plot.png
@@ -55,7 +55,7 @@ run_004
   train_rmse: 0.05779181493626049
   test_r2: 0.9906110622142026
   test_rmse: 0.043875911713657616
-  best_model: Mul(Mul(0.8908455942607054,Add(exp(v), Mul(-1,Add(v,-1.1116989735804148)))), Pow(Add(Add(Pow(2.5968676598264713, v), Mul(-1,v)), Mul(-1,sin(sin(-3.18995835548025)))), -1))
+  best_model: (-0.8908455942607054*v + 0.8908455942607054*exp(v) + 0.99035213275826086)/(2.5968676598264713**v - v - 0.0483280153278139)
   results_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_004/best_model_results.txt
   plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_004/best_model_plot.png
   mu_plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_004/best_mu_plot.png
@@ -71,7 +71,7 @@ run_005
   train_rmse: 0.057973908356597756
   test_r2: 0.9896097427110147
   test_rmse: 0.046156309224196605
-  best_model: Pow(Add(v, Mul(-1,Mul(sin(1.298948029686454), Pow(Mul(-0.02062493499294432, Pow(5.0, -1)), -1)))), Mul(exp(Mul(3.0635626365393307, Pow(-2.5168146550341355, -1))), Pow(Add(Pow(0.5380487170689296, v),exp(v)), -1)))
+  best_model: (v + 233.522251540501)**(0.29604669632172091/(0.5380487170689296**v + exp(v)))
   results_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_005/best_model_results.txt
   plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_005/best_model_plot.png
   mu_plot_path: /home/alucantonio/sr-tire/src/sr_tire/models/random_search_runs/run_005/best_mu_plot.png

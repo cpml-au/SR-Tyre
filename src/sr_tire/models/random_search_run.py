@@ -11,6 +11,7 @@ from flex.gp.sympy import stringify_for_sympy
 from flex.gp.util import compile_individual_with_consts, load_config_data
 import numpy as np
 from sklearn.metrics import r2_score
+import sympy as sp
 
 from ..force import MODEL_V
 from ..plot import plot_force_model_data, plot_mu_curve
@@ -36,17 +37,22 @@ RUN_SUMMARY_LATEX_PATH = RUN_RESULTS_DIR / "summary.tex"
 DEFAULT_TIME_BUDGET_SECONDS = 420.0
 
 
+def format_sympy_expression(expression):
+    return str(sp.sympify(expression)).replace("ARG0", "v")
+
+
 @dataclass
 class RandomSearchModel:
     best_individual: gp.PrimitiveTree
     toolbox: base.Toolbox
 
     def get_best_individual_sympy(self):
-        return stringify_for_sympy(
+        expression = stringify_for_sympy(
             self.best_individual,
             conversion_rules,
             "c",
         )
+        return format_sympy_expression(expression)
 
 
 def set_search_seed(seed):
