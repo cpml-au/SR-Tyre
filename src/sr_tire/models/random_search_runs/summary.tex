@@ -1,0 +1,19 @@
+\documentclass{article}
+\usepackage{booktabs}
+\begin{document}
+\section*{Random Search Run Summary}
+Total runs: 5\\
+Best test $R^2$ run: 002\\
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Statistic & $R^2 train$ & $R^2 test$ & RMSE train & RMSE test \\
+\midrule
+Median & 0.987575 & 0.990611 & 0.057792 & 0.043876 \\
+Best test $R^2$ (run 002) & 0.987767 & 0.992346 & 0.057341 & 0.039616 \\
+\bottomrule
+\end{tabular}
+\caption{Median metrics across repeated random-search runs and the metrics of the run with the best test $R^2$.}
+\end{table}
+\end{document}

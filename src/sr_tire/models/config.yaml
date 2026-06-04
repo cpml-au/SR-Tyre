@@ -1,6 +1,6 @@
 gp:
   num_individuals: 800 # 1000
-  generations: 20 # 200
+  generations: 50 # 200
   multi_island:
     num_islands: 4 # 15
     migration: { "freq": 10, "frac": 0.05 }
@@ -39,6 +39,7 @@ gp:
         { "name": "sub", "dimension": null, "rank": null },
         { "name": "mul", "dimension": null, "rank": null },
         { "name": "div", "dimension": null, "rank": null },
+        { "name": "pow", "dimension": null, "rank": null },
         # { "name": "aq", "dimension": null, "rank": null },
         # { "name": "square", "dimension": null, "rank": null },
         { "name": "sin", "dimension": null, "rank": null },

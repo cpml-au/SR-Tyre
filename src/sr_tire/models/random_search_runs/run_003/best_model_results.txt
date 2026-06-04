@@ -1,0 +1,9 @@
+best_model: Add(Pow(Add(Mul(v,v),Add(v, Mul(-1,v))), Mul(Add(4.5502355607120455, Mul(-1,v)),Pow(2.990483818894818, -4.071117863889617))),Pow(Pow(exp(v), Mul(-1.1966289335545817, Pow(-4.704378557433585, -1))), Add(Add(-0.438722691331237, Mul(-1,v)),Mul(v, Pow(-5.0, -1)))))
+best_validation_score: 0.9923652667664624
+best_hyperparameters: {'time_budget_seconds': 420.0, 'elapsed_seconds': 420.0091143400059, 'evaluated_samples': 17218, 'max_samples': None, 'min_': 2, 'max_': 4, 'primitives': ['add', 'sub', 'mul', 'div', 'pow', 'sin', 'exp']}
+train_rmse: 0.05752945618169181
+train_r2: 0.9876870724309318
+val_rmse: 0.040764292988167646
+val_r2: 0.9923652667664624
+test_rmse: 0.041901892825442835
+test_r2: 0.9914368916973557

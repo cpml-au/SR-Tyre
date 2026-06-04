@@ -57,6 +57,27 @@ To run with Optuna HPO:
 python -m sr_tire.models.flex_sr_run --hpo
 ```
 
+## Run Random Search Baseline
+
+To run random expression search with the same primitive set as Flex SR and a
+7-minute wall-clock budget per run:
+
+```bash
+python -m sr_tire.models.random_search_run
+```
+
+To run multiple independent random-search runs:
+
+```bash
+python -m sr_tire.models.random_search_run --num-runs 5
+```
+
+To change the per-run time budget:
+
+```bash
+python -m sr_tire.models.random_search_run --time-budget-seconds 420
+```
+
 ## Outputs
 
 After running Flex SR, the script:
@@ -107,6 +128,15 @@ src/sr_tire/models/flex_runs/summary.txt
 
 ```text
 src/sr_tire/models/flex_runs/summary.tex
+```
+
+The random-search baseline writes analogous outputs to:
+
+```text
+src/sr_tire/models/random_search_best_model_results.txt
+src/sr_tire/models/random_search_best_model_plot.png
+src/sr_tire/models/random_search_best_mu_plot.png
+src/sr_tire/models/random_search_runs/
 ```
 
 ## Notes
