@@ -25,6 +25,7 @@ from sr_tire.dynamic_pde.simulate_pde import (
 
 ArrayLike: TypeAlias = jax.Array | np.ndarray
 ScalarLike: TypeAlias = float | jax.Array
+CONTACT_VECTOR_XI_COMPONENT = 1.0
 RhsArgs: TypeAlias = tuple[
     "TirePDEParameters",
     "DctkitLineOperators",
@@ -39,6 +40,7 @@ class DctkitLineOperators(NamedTuple):
 
     complex: object
     dx: float
+    # Primal 0-cochain with coefficient 1 at every contact-line node.
     ones_p0: C.Cochain
 
 
@@ -69,31 +71,46 @@ def constant_p0(operators: DctkitLineOperators, value: ScalarLike) -> C.Cochain:
     return C.scalar_mul(operators.ones_p0, value)
 
 
-def upwind_derivative_p0(
-    z_p0: C.Cochain,
+def contract_primal_1_form_with_constant_vector_p0(
+    one_form_p1: C.Cochain,
     operators: DctkitLineOperators,
+    leading_boundary_value: ScalarLike,
+    first_node_value: ScalarLike,
+    vector_xi_component: float = CONTACT_VECTOR_XI_COMPONENT,
 ) -> C.Cochain:
-    """Return the upwind spatial derivative as a primal 0-cochain.
+    """Contract a primal 1-cochain with a constant 1D vector field.
 
-    ``C.coboundary(z_p0)`` is naturally a primal 1-cochain on edges. The tire
-    model needs a nodal derivative in the same primal 0-space as ``z`` and uses
-    the leading-edge boundary condition ``z(xi=0)=0``. This interpolation from
-    edge differences back to upwind nodal values is the only coefficient-level
-    step left in the DCTKit RHS.
+    This is a model-specific discrete interior product, not a new cochain for
+    the vector field. The vector field is the ordinary tangent vector
+    ``vector_xi_component * d/dxi`` on the dimensionless contact coordinate.
 
-    The Burgers tutorial can use ``flat_dual_upw`` directly because its unknown
-    is a dual 0-cochain at cell/circumcenter locations and the update is written
-    as a flux balance. Here ``z`` is kept as a primal 0-cochain at the contact
-    nodes to match ``simulate_pde.py`` exactly, so the same flat-based upwind
-    operator would require changing the state placement and the reference
-    discretization.
+    In 1D, contracting the 1-form ``dz`` with this vector field gives the
+    directional derivative of ``z`` along the contact patch. The result is
+    placed back on the primal 0-cochain nodes by taking the upwind edge for a
+    positive vector field. The leading-edge boundary value supplies the missing
+    upstream edge at ``xi=0``.
     """
 
-    dz_p1 = C.coboundary(z_p0)
-    leading_edge_difference = z_p0.coeffs[:1]
-    edge_differences = dz_p1.coeffs
-    dzdx = jnp.concatenate((leading_edge_difference, edge_differences), axis=0)
-    return C.scalar_mul(C.CochainP0(operators.complex, dzdx), 1.0 / operators.dx)
+    if float(vector_xi_component) < 0.0:
+        raise NotImplementedError("Only positive contact-patch transport is implemented.")
+
+    # ``one_form_p1`` is a primal 1-cochain on mesh edges. To return a primal
+    # 0-cochain on nodes, use the upstream edge value at each node. The first
+    # node has no mesh edge upstream, so we insert the boundary difference.
+    # For v = vector_xi_component:
+    #   (i_v dz)_0 = v * (z_0 - z_boundary) / dx,
+    #   (i_v dz)_i = v * (z_i - z_{i-1}) / dx,  i >= 1.
+    leading_edge_difference = jnp.asarray(first_node_value - leading_boundary_value)
+    leading_edge_difference = jnp.reshape(leading_edge_difference, (1, 1))
+    contracted_values = jnp.concatenate(
+        (leading_edge_difference, one_form_p1.coeffs),
+        axis=0,
+    )
+
+    # The contraction is a primal 0-cochain. Dividing by dx evaluates the
+    # integrated 1-cochain on the ordinary vector field d/dxi.
+    contraction_p0 = C.CochainP0(operators.complex, contracted_values)
+    return C.scalar_mul(contraction_p0, vector_xi_component / operators.dx)
 
 
 def compute_force_dctkit(
@@ -104,7 +121,10 @@ def compute_force_dctkit(
     """Integrate bristle deflection with DCTKit's cochain inner product."""
 
     def integrate_row(z_row: jax.Array) -> jax.Array:
+        # Each saved time slice is a primal 0-cochain of bristle deflections.
         z_p0 = C.CochainP0(operators.complex, z_row)
+        # Inner product with the constant primal 0-cochain integrates over the
+        # contact line using the Hodge-star dual-cell weights.
         return C.inner(z_p0, operators.ones_p0)
 
     return params.Fz * params.k_0 * jax.vmap(integrate_row)(z)
@@ -121,8 +141,24 @@ def tire_pde_rhs_dctkit(
 ) -> jax.Array:
     """Dynamic tire PDE RHS assembled with dctkit cochains."""
 
+    # State: bristle deflection as a primal 0-cochain at contact-line nodes.
     z_p0 = C.CochainP0(operators.complex, z)
-    dzdx_p0 = upwind_derivative_p0(z_p0, operators)
+
+    # Exterior derivative: primal 0-cochain -> primal 1-cochain on edges.
+    dz_p1 = C.coboundary(z_p0)
+
+    # Discrete contraction: the vector field is the ordinary constant tangent
+    # vector +d/dxi, represented only by its scalar component below. The result
+    # is a primal 0-cochain matching the state layout.
+    advective_derivative_p0 = contract_primal_1_form_with_constant_vector_p0(
+        dz_p1,
+        operators,
+        leading_boundary_value=0.0,
+        first_node_value=z_p0.coeffs[0, 0],
+        vector_xi_component=CONTACT_VECTOR_XI_COMPONENT,
+    )
+
+    # Scalar quantities extracted from the primal 0-cochain field.
     integral_z = C.inner(z_p0, operators.ones_p0)
     zL = z_p0.coeffs[-1, 0]
 
@@ -136,7 +172,8 @@ def tire_pde_rhs_dctkit(
     phi, psi = structural_coefficients(params)
     alpha = jnp.abs(sigma) / mu * params.k_0
 
-    transport_p0 = C.scalar_mul(dzdx_p0, -1.0 / params.L)
+    # All terms below are primal 0-cochains so they can be added directly.
+    transport_p0 = C.scalar_mul(advective_derivative_p0, -1.0 / params.L)
     coupled_mean_p0 = constant_p0(operators, psi * integral_z)
     relaxation_state_p0 = C.sub(z_p0, coupled_mean_p0)
     relaxation_p0 = C.scalar_mul(relaxation_state_p0, -alpha)
