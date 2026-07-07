@@ -6,7 +6,9 @@ import numpy as np
 from sklearn.metrics import r2_score
 
 
-RESULTS_PATH = Path(__file__).resolve().with_name("best_model_results.txt")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+STEADY_STRIBECK_OUTPUT_DIR = PROJECT_ROOT / "results" / "steady-stribeck"
+RESULTS_PATH = STEADY_STRIBECK_OUTPUT_DIR / "best_model_results.txt"
 
 
 def compute_regression_metrics(y_true, y_pred):

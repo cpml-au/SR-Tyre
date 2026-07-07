@@ -29,15 +29,19 @@ from .fitness import (
     predict_force_model_with_regressor,
     score,
 )
-from .save_results import RESULTS_PATH, save_model_results
+from .save_results import (
+    RESULTS_PATH,
+    STEADY_STRIBECK_OUTPUT_DIR,
+    save_model_results,
+)
 
 # set up number of cpus per ray worker
 num_cpus = 1
 ROOT_DIR = Path(__file__).resolve().parents[3]
 CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
-PLOT_PATH = Path(__file__).resolve().with_name("best_model_plot.png")
-MU_PLOT_PATH = Path(__file__).resolve().with_name("best_mu_plot.png")
-RUN_RESULTS_DIR = Path(__file__).resolve().with_name("flex_runs")
+PLOT_PATH = STEADY_STRIBECK_OUTPUT_DIR / "best_model_plot.png"
+MU_PLOT_PATH = STEADY_STRIBECK_OUTPUT_DIR / "best_mu_plot.png"
+RUN_RESULTS_DIR = STEADY_STRIBECK_OUTPUT_DIR / "flex_runs"
 RUN_SUMMARY_PATH = RUN_RESULTS_DIR / "summary.txt"
 RUN_SUMMARY_LATEX_PATH = RUN_RESULTS_DIR / "summary.tex"
 

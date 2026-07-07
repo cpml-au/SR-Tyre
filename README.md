@@ -10,9 +10,11 @@ Utilities for:
 
 - `src/sr_tire/process_data.py`: load and split the tire dataset
 - `src/sr_tire/force.py`: force-model implementation
+- `src/sr_tire/dynamic_pde/simulate_pde.py`: JAX translation of the dynamic PDE simulation
+- `src/sr_tire/dynamic_pde/compare_pacejka.py`: compare PDE forces against Pacejka data
 - `src/sr_tire/plot.py`: plotting utilities
-- `src/sr_tire/models/flex_sr_run.py`: Flex symbolic regression entry point
-- `src/sr_tire/models/config.yaml`: Flex configuration
+- `src/sr_tire/steady_stribeck/flex_sr_run.py`: Flex symbolic regression entry point
+- `src/sr_tire/steady_stribeck/config.yaml`: Flex configuration
 - `data/lateral_tire_test.csv`: tire dataset
 
 ## Install
@@ -31,30 +33,80 @@ To plot the default force model against the processed tire data:
 python -m sr_tire.plot
 ```
 
+## Run Dynamic PDE Simulation
+
+To run the dynamic PDE tire simulation:
+
+```bash
+python -m sr_tire.dynamic_pde.simulate_pde
+```
+
+The module saves the bristle deformation, force, and slip plots under the
+repository-root `results/pde/`. To open
+interactive plot windows as well:
+
+```bash
+python -m sr_tire.dynamic_pde.simulate_pde --show
+```
+
+To save those figures programmatically:
+
+```python
+from sr_tire.dynamic_pde.simulate_pde import plot_simulation, simulate_pde
+
+result = simulate_pde()
+plot_simulation(result, output_dir="results/pde", show=False)
+```
+
+To run the equivalent dctkit cochain-based spatial discretization with Diffrax
+time integration:
+
+```bash
+python -m sr_tire.dynamic_pde.simulate_pde_dctkit
+```
+
+To compare the dynamic PDE forces with the comparable Pacejka force trajectory
+in `data/Fx_dataset.csv`, using `parameterization=1`, `excitation=var2`,
+`run=5`, `sigma_0=0.12`, amplitude ratio `0.4`, and `omega=10*pi`:
+
+```bash
+python -m sr_tire.dynamic_pde.compare_pacejka
+```
+
+This writes comparison plots and per-trajectory error metrics to the
+repository-root `results/pde/`.
+
+By default, the comparison plot shows that same `var2`, run 5 pair. To choose
+another pair within `parameterization=1`:
+
+```bash
+python -m sr_tire.dynamic_pde.compare_pacejka --excitation var2 --run 1
+```
+
 ## Run Flex SR
 
 To run a single training run without hyperparameter optimization:
 
 ```bash
-python -m sr_tire.models.flex_sr_run
+python -m sr_tire.steady_stribeck.flex_sr_run
 ```
 
 To run multiple independent training runs:
 
 ```bash
-python -m sr_tire.models.flex_sr_run --num-runs 5
+python -m sr_tire.steady_stribeck.flex_sr_run --num-runs 5
 ```
 
 To control the base random seed used for repeated runs:
 
 ```bash
-python -m sr_tire.models.flex_sr_run --num-runs 5 --seed 123
+python -m sr_tire.steady_stribeck.flex_sr_run --num-runs 5 --seed 123
 ```
 
 To run with Optuna HPO:
 
 ```bash
-python -m sr_tire.models.flex_sr_run --hpo
+python -m sr_tire.steady_stribeck.flex_sr_run --hpo
 ```
 
 ## Run Random Search Baseline
@@ -63,80 +115,49 @@ To run random expression search with the same primitive set as Flex SR and a
 7-minute wall-clock budget per run:
 
 ```bash
-python -m sr_tire.models.random_search_run
+python -m sr_tire.steady_stribeck.random_search_run
 ```
 
 To run multiple independent random-search runs:
 
 ```bash
-python -m sr_tire.models.random_search_run --num-runs 5
+python -m sr_tire.steady_stribeck.random_search_run --num-runs 5
 ```
 
 To change the per-run time budget:
 
 ```bash
-python -m sr_tire.models.random_search_run --time-budget-seconds 420
+python -m sr_tire.steady_stribeck.random_search_run --time-budget-seconds 420
 ```
 
-## Outputs
+## Results
 
 After running Flex SR, the script:
 
 - prints dataset summary information
 - fits the symbolic `mu(v)` model
-- saves the best overall model metrics and expression to:
+- saves all steady Stribeck artifacts under:
 
-```text
-src/sr_tire/models/best_model_results.txt
+```
+results/steady-stribeck/
 ```
 
-- saves the best overall plot to:
+Flex SR writes:
 
 ```text
-src/sr_tire/models/best_model_plot.png
+results/steady-stribeck/best_model_results.txt
+results/steady-stribeck/best_model_plot.png
+results/steady-stribeck/best_mu_plot.png
+results/steady-stribeck/flex_runs/
 ```
 
-- saves the best overall `mu(v)` plot to:
+The random-search baseline writes analogous results to:
 
 ```text
-src/sr_tire/models/best_mu_plot.png
-```
-
-- when `--num-runs` is greater than `1`, also saves per-run artifacts under:
-
-```text
-src/sr_tire/models/flex_runs/
-```
-
-- writes one subdirectory per run, for example:
-
-```text
-src/sr_tire/models/flex_runs/run_001/best_model_results.txt
-src/sr_tire/models/flex_runs/run_001/best_model_plot.png
-src/sr_tire/models/flex_runs/run_001/best_mu_plot.png
-src/sr_tire/models/flex_runs/run_001/train_mse_history.csv
-src/sr_tire/models/flex_runs/run_001/val_mse_history.csv
-```
-
-- writes an aggregate run summary to:
-
-```text
-src/sr_tire/models/flex_runs/summary.txt
-```
-
-- writes a LaTeX summary document with median metrics and the best-test-`R^2` run to:
-
-```text
-src/sr_tire/models/flex_runs/summary.tex
-```
-
-The random-search baseline writes analogous outputs to:
-
-```text
-src/sr_tire/models/random_search_best_model_results.txt
-src/sr_tire/models/random_search_best_model_plot.png
-src/sr_tire/models/random_search_best_mu_plot.png
-src/sr_tire/models/random_search_runs/
+results/steady-stribeck/random_search_best_model_results.txt
+results/steady-stribeck/random_search_best_model_plot.png
+results/steady-stribeck/random_search_best_mu_plot.png
+results/steady-stribeck/random_search_runs/
 ```
 
 ## Notes

@@ -1,0 +1,69 @@
+run_001
+  seed: 42
+  best_validation_score: 0.9933664411984716
+  train_r2: 0.9883416859137265
+  train_rmse: 0.055979302397501596
+  test_r2: 0.9927255773008248
+  test_rmse: 0.03862043755958538
+  best_model: 1.0215214549046192**v - 1.0916258342391725/(v - exp(v))
+  results_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_001/best_model_results.txt
+  plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_001/best_model_plot.png
+  mu_plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_001/best_mu_plot.png
+  train_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_001/train_mse_history.csv
+  val_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_001/val_mse_history.csv
+
+run_002
+  seed: 43
+  best_validation_score: 0.9933223739245698
+  train_r2: 0.9883351951200386
+  train_rmse: 0.055994883532991396
+  test_r2: 0.9925073929128623
+  test_rmse: 0.03919533698382955
+  best_model: 1.02017985534295**v + 1.074510915557333/(-v + exp(v))
+  results_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_002/best_model_results.txt
+  plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_002/best_model_plot.png
+  mu_plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_002/best_mu_plot.png
+  train_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_002/train_mse_history.csv
+  val_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_002/val_mse_history.csv
+
+run_003
+  seed: 44
+  best_validation_score: 0.9933420879819573
+  train_r2: 0.9883402795522515
+  train_rmse: 0.055982678733033725
+  test_r2: 0.9926011036249197
+  test_rmse: 0.03894945594476215
+  best_model: 1.0202439580731801**v - 1.0845630839709177/(v - exp(v))
+  results_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_003/best_model_results.txt
+  plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_003/best_model_plot.png
+  mu_plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_003/best_mu_plot.png
+  train_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_003/train_mse_history.csv
+  val_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_003/val_mse_history.csv
+
+run_004
+  seed: 45
+  best_validation_score: 0.9932436334012716
+  train_r2: 0.9885560433961418
+  train_rmse: 0.05546227852525292
+  test_r2: 0.9920359747471468
+  test_rmse: 0.04040957078061195
+  best_model: exp((v*(v - 0.40576672051824225) + exp(v) - sin(2*v))**(-0.6225138142426849))
+  results_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_004/best_model_results.txt
+  plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_004/best_model_plot.png
+  mu_plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_004/best_mu_plot.png
+  train_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_004/train_mse_history.csv
+  val_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_004/val_mse_history.csv
+
+run_005
+  seed: 46
+  best_validation_score: 0.9933496950800909
+  train_r2: 0.9883156768057743
+  train_rmse: 0.056041711102703576
+  test_r2: 0.9927348316034298
+  test_rmse: 0.038595863859849276
+  best_model: 1.0238324406079**v - 1.0824821016680686/(v - exp(v))
+  results_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_005/best_model_results.txt
+  plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_005/best_model_plot.png
+  mu_plot_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_005/best_mu_plot.png
+  train_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_005/train_mse_history.csv
+  val_mse_history_path: /home/agentk/SR-Tyre/results/steady-stribeck/flex_runs/run_005/val_mse_history.csv

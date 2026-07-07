@@ -6,7 +6,18 @@ build-backend = "setuptools.build_meta"
 name = "sr-tire"
 version = "0.1.0"
 description = "Tire data processing, plotting, and symbolic regression utilities."
+dependencies = [
+    "dctkit @ git+https://github.com/cpml-au/dctkit.git",
+    "diffrax",
+    "gmsh",
+    "jax>=0.4",
+    "matplotlib",
+    "meshio",
+    "numpy",
+    "pygmsh",
+    "typeguard",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["sr_tire", "sr_tire.models"]
+packages = ["sr_tire", "sr_tire.dynamic_pde", "sr_tire.steady_stribeck"]

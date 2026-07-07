@@ -23,14 +23,14 @@ from .fitness import (
     normalize_force_predictions,
 )
 from .flex_sr_run import generate_dataset, print_dataset_info
-from .save_results import save_model_results
+from .save_results import STEADY_STRIBECK_OUTPUT_DIR, save_model_results
 
 
 CONFIG_PATH = Path(__file__).resolve().with_name("config.yaml")
-RESULTS_PATH = Path(__file__).resolve().with_name("random_search_best_model_results.txt")
-PLOT_PATH = Path(__file__).resolve().with_name("random_search_best_model_plot.png")
-MU_PLOT_PATH = Path(__file__).resolve().with_name("random_search_best_mu_plot.png")
-RUN_RESULTS_DIR = Path(__file__).resolve().with_name("random_search_runs")
+RESULTS_PATH = STEADY_STRIBECK_OUTPUT_DIR / "random_search_best_model_results.txt"
+PLOT_PATH = STEADY_STRIBECK_OUTPUT_DIR / "random_search_best_model_plot.png"
+MU_PLOT_PATH = STEADY_STRIBECK_OUTPUT_DIR / "random_search_best_mu_plot.png"
+RUN_RESULTS_DIR = STEADY_STRIBECK_OUTPUT_DIR / "random_search_runs"
 RUN_SUMMARY_PATH = RUN_RESULTS_DIR / "summary.txt"
 RUN_SUMMARY_LATEX_PATH = RUN_RESULTS_DIR / "summary.tex"
 
