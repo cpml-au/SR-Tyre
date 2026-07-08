@@ -1,7 +1,7 @@
 import argparse
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Any, NamedTuple, TypeAlias
+from typing import Any, Callable, NamedTuple, TypeAlias
 
 import diffrax
 import jax
@@ -32,6 +32,17 @@ RhsArgs: TypeAlias = tuple[
     ScalarLike,
     ScalarLike,
     ScalarLike,
+]
+RhsTerm: TypeAlias = Callable[
+    [
+        ScalarLike,
+        C.Cochain,
+        C.Cochain,
+        C.Cochain,
+        "TirePDEParameters",
+        "DctkitLineOperators",
+    ],
+    C.Cochain | jax.Array | np.ndarray | float,
 ]
 
 
@@ -69,6 +80,33 @@ def constant_p0(operators: DctkitLineOperators, value: ScalarLike) -> C.Cochain:
     """Return a primal 0-cochain with the same scalar value at every node."""
 
     return C.scalar_mul(operators.ones_p0, value)
+
+
+def coordinate_p0(operators: DctkitLineOperators) -> C.Cochain:
+    """Return the contact-line coordinate as a primal 0-cochain."""
+
+    xi = jnp.asarray(operators.complex.node_coords[:, 0])
+    return C.CochainP0(operators.complex, xi)
+
+
+def coerce_rhs_term_to_p0(
+    term: C.Cochain | jax.Array | np.ndarray | float,
+    operators: DctkitLineOperators,
+    z: jax.Array,
+) -> C.Cochain:
+    """Convert a learned RHS term to the primal 0-cochain layout."""
+
+    if isinstance(term, C.Cochain):
+        coeffs = term.coeffs.reshape(-1)
+    else:
+        coeffs = jnp.asarray(term)
+        if coeffs.ndim == 0 or coeffs.size == 1:
+            coeffs = jnp.full_like(z, coeffs.reshape(()))
+        else:
+            coeffs = coeffs.reshape(-1)
+
+    coeffs = jnp.nan_to_num(coeffs, nan=0.0, posinf=1.0e8, neginf=-1.0e8)
+    return C.CochainP0(operators.complex, coeffs)
 
 
 def contract_primal_1_form_with_constant_vector_p0(
@@ -138,6 +176,7 @@ def tire_pde_rhs_dctkit(
     sigma_0: ScalarLike = 0.12,
     omega: ScalarLike = 5.0 * jnp.pi,
     amplitude_ratio: ScalarLike = 0.6,
+    rhs_term: RhsTerm | None = None,
 ) -> jax.Array:
     """Dynamic tire PDE RHS assembled with dctkit cochains."""
 
@@ -171,6 +210,8 @@ def tire_pde_rhs_dctkit(
     mu = stribeck_mu(sigma, params)
     phi, psi = structural_coefficients(params)
     alpha = jnp.abs(sigma) / mu * params.k_0
+    sigma_p0 = constant_p0(operators, sigma)
+    xi_p0 = coordinate_p0(operators)
 
     # All terms below are primal 0-cochains so they can be added directly.
     transport_p0 = C.scalar_mul(advective_derivative_p0, -1.0 / params.L)
@@ -184,6 +225,13 @@ def tire_pde_rhs_dctkit(
         C.add(transport_p0, relaxation_p0),
         C.add(trailing_edge_p0, slip_drive_p0),
     )
+    if rhs_term is not None:
+        learned_term_p0 = coerce_rhs_term_to_p0(
+            rhs_term(t, z_p0, sigma_p0, xi_p0, params, operators),
+            operators,
+            z,
+        )
+        rhs_p0 = C.add(rhs_p0, learned_term_p0)
     return rhs_p0.coeffs.reshape(-1)
 
 
@@ -284,6 +332,83 @@ def simulate_pde_dctkit(
         omega,
         amplitude_ratio,
     )
+
+
+def simulate_pde_dctkit_with_rhs_term(
+    params: TirePDEParameters = TirePDEParameters(),
+    n_x: int = 100,
+    t_span: tuple[float, float] = (0.0, 5.0),
+    n_t: int = 5001,
+    sigma_0: ScalarLike = 0.12,
+    omega: ScalarLike = 5.0 * jnp.pi,
+    amplitude_ratio: ScalarLike = 0.6,
+    z0: ArrayLike | None = None,
+    rhs_term: RhsTerm | None = None,
+) -> SimulationResult:
+    """Run the DCTKit PDE with an optional additive RHS term.
+
+    ``rhs_term`` is called as
+    ``rhs_term(t, z_p0, sigma_p0, xi_p0, params, operators)`` and should return
+    a primal 0-cochain, an array with one value per spatial node, or a scalar.
+    """
+
+    if n_x < 2:
+        raise ValueError("n_x must be at least 2.")
+    if n_t < 2:
+        raise ValueError("n_t must be at least 2.")
+
+    operators = build_line_operators(n_x)
+    dt = (t_span[1] - t_span[0]) / (n_t - 1)
+    max_dt = 2.0 * float(params.L) * operators.dx
+    if dt > max_dt:
+        raise ValueError(
+            f"Time step {dt:.6g} is too large for the explicit Diffrax solver; "
+            f"use n_t >= {int((t_span[1] - t_span[0]) / max_dt) + 2}."
+        )
+
+    xi = jnp.linspace(0.0, 1.0, n_x)
+    t = jnp.linspace(t_span[0], t_span[1], n_t)
+
+    if z0 is None:
+        z0 = jnp.zeros((n_x,))
+    else:
+        z0 = jnp.asarray(z0)
+
+    def rhs(t_current: jax.Array, z_current: jax.Array, args: RhsArgs) -> jax.Array:
+        params, operators, sigma_0, omega, amplitude_ratio = args
+        return tire_pde_rhs_dctkit(
+            t_current,
+            z_current,
+            params,
+            operators,
+            sigma_0=sigma_0,
+            omega=omega,
+            amplitude_ratio=amplitude_ratio,
+            rhs_term=rhs_term,
+        )
+
+    solution = diffrax.diffeqsolve(
+        diffrax.ODETerm(rhs),
+        solver=diffrax.Tsit5(),
+        t0=t[0],
+        t1=t[-1],
+        dt0=dt,
+        y0=z0,
+        args=(params, operators, sigma_0, omega, amplitude_ratio),
+        saveat=diffrax.SaveAt(ts=t),
+        stepsize_controller=diffrax.ConstantStepSize(),
+        max_steps=100_000,
+    )
+
+    z = solution.ys
+    force = compute_force_dctkit(z, params, operators)
+    sigma = slip_input(
+        t,
+        sigma_0=sigma_0,
+        omega=omega,
+        amplitude_ratio=amplitude_ratio,
+    )
+    return SimulationResult(t=t, xi=xi, z=z, force=force, slip=sigma)
 
 
 def compare_with_baseline(

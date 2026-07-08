@@ -83,6 +83,16 @@ another pair within `parameterization=1`:
 python -m sr_tire.dynamic_pde.compare_pacejka --excitation var2 --run 1
 ```
 
+To run Flex SR for an additive term in the dynamic PDE right-hand side:
+
+```bash
+python -m sr_tire.dynamic_pde.flex_sr_run
+```
+
+The run is configured by `src/sr_tire/dynamic_pde/config.yaml` and scores each
+candidate by solving the PDE and comparing the resulting force trajectory with
+the selected trajectory from `data/Fx_dataset.csv`.
+
 ## Run Flex SR
 
 To run a single training run without hyperparameter optimization:
