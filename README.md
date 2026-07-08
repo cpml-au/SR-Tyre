@@ -92,6 +92,9 @@ python -m sr_tire.dynamic_pde.flex_sr_run
 The run is configured by `src/sr_tire/dynamic_pde/config.yaml` and scores each
 candidate by solving the PDE and comparing the resulting force trajectory with
 the selected trajectory from `data/Fx_dataset.csv`.
+The default configuration is intentionally small so it can complete on modest
+machines; increase `num_individuals`, `generations`, `n_x`, `max_time_points`,
+and the PSO settings only after the smoke-sized run finishes.
 
 ## Run Flex SR
 

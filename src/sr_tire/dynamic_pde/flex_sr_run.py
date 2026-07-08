@@ -4,6 +4,7 @@ from copy import deepcopy
 from functools import partial
 from pathlib import Path
 
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import optuna
@@ -65,6 +66,10 @@ def _read_dataset_config(config):
         "train_fraction": cfg.get("train_fraction", 0.7),
         "val_fraction": cfg.get("val_fraction", 0.15),
         "force_scale": cfg.get("force_scale", "auto"),
+        "time_stride": cfg.get("time_stride", 1),
+        "max_time_points": cfg.get("max_time_points"),
+        "clear_jax_caches": cfg.get("clear_jax_caches", True),
+        "solver_max_dt": cfg.get("solver_max_dt"),
     }
 
 
@@ -99,6 +104,69 @@ def print_dataset_info(X_train, y_train, X_val, y_val, X_test, y_test, dataset):
     print(f"  Test: X shape={X_test.shape}, y shape={y_test.shape}")
 
 
+def zero_p0(c):
+    """Return the zero primal 0-cochain on the same complex as ``c``."""
+
+    return C.scalar_mul(c, 0.0)
+
+
+def _contact_dx(complex_):
+    xi = jnp.asarray(complex_.node_coords[:, 0])
+    return xi[1] - xi[0]
+
+
+def upwind_contract_p1(c):
+    """Contract a primal 1-cochain to primal 0 nodes with upwind placement."""
+
+    dx = _contact_dx(c.complex)
+    leading_edge = jnp.zeros((1, 1), dtype=c.coeffs.dtype)
+    coeffs = jnp.concatenate((leading_edge, c.coeffs), axis=0) / dx
+    return C.CochainP0(c.complex, coeffs)
+
+
+def upwind_dz_p0(c):
+    """Compute the upwind derivative of a primal 0-cochain with zero boundary."""
+
+    dx = _contact_dx(c.complex)
+    dz_p1 = C.coboundary(c)
+    coeffs = jnp.concatenate((c.coeffs[:1], dz_p1.coeffs), axis=0) / dx
+    return C.CochainP0(c.complex, coeffs)
+
+
+def _constructible_types(pset):
+    constructible = {
+        type_
+        for type_, terminals in pset.terminals.items()
+        if len(terminals) > 0
+    }
+    changed = True
+    while changed:
+        changed = False
+        for return_type, primitives in pset.primitives.items():
+            if return_type in constructible:
+                continue
+            for primitive in primitives:
+                if all(arg_type in constructible for arg_type in primitive.args):
+                    constructible.add(return_type)
+                    changed = True
+                    break
+    return constructible
+
+
+def add_dynamic_pde_terminals(pset):
+    pset.addPrimitive(zero_p0, [C.CochainP0], C.CochainP0, name="ZeroP0")
+    pset.addPrimitive(upwind_dz_p0, [C.CochainP0], C.CochainP0, name="UpwindDzP0")
+    pset.addTerminal(0.0, float, "zero")
+    if C.CochainP1 in _constructible_types(pset):
+        pset.addPrimitive(
+            upwind_contract_p1,
+            [C.CochainP1],
+            C.CochainP0,
+            name="UpwindContractP1",
+        )
+    return pset
+
+
 def build_regressor(num_variables, params, cfgfile, dataset, custom_logger=None):
     if num_variables != 3:
         raise ValueError("Dynamic PDE RHS search expects z, sigma, and xi inputs.")
@@ -126,6 +194,7 @@ def build_regressor(num_variables, params, cfgfile, dataset, custom_logger=None)
     )
     pset.renameArguments(ARG0="z", ARG1="sigma", ARG2="xi")
     pset = add_primitives_to_pset_from_dict(pset, gp_config["primitives"])
+    pset = add_dynamic_pde_terminals(pset)
     if gp_config["use_constants"]:
         pset.addTerminal(object, float, "c")
 
@@ -143,7 +212,7 @@ def build_regressor(num_variables, params, cfgfile, dataset, custom_logger=None)
         num_cpus=gp_config.get("num_cpus", num_cpus),
         print_log=True,
         custom_logger=custom_logger,
-        remove_init_duplicates=True,
+        remove_init_duplicates=gp_config.get("remove_init_duplicates", False),
         **regressor_params,
     )
 
@@ -435,15 +504,31 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    if not ray.is_initialized():
-        ray.init(runtime_env={"working_dir": str(ROOT_DIR)})
+def init_ray_from_config(config):
+    ray_config = config.get("ray", {})
+    ray_kwargs = {}
+    if ray_config.get("include_working_dir", True):
+        ray_kwargs["runtime_env"] = {"working_dir": str(ROOT_DIR)}
+    if "object_store_memory_mb" in ray_config:
+        ray_kwargs["object_store_memory"] = int(
+            float(ray_config["object_store_memory_mb"]) * 1024 * 1024
+        )
+    if "num_cpus" in ray_config:
+        ray_kwargs["num_cpus"] = int(ray_config["num_cpus"])
+    if ray_config.get("local_mode", False):
+        ray_kwargs["local_mode"] = True
 
+    if not ray.is_initialized():
+        ray.init(**ray_kwargs)
+
+
+def main():
     args = parse_args()
     if args.num_runs < 1:
         raise ValueError("num-runs must be at least 1")
 
     regressor_params, config = load_config_data(str(CONFIG_PATH))
+    init_ray_from_config(config)
     X_train, y_train, X_val, y_val, X_test, y_test, dataset = generate_dataset(config)
     print_dataset_info(X_train, y_train, X_val, y_val, X_test, y_test, dataset)
 

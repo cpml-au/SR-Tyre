@@ -3,8 +3,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pygmo as pg
+from dctkit.dec import cochain as C
 from flex.gp.util import (
     compile_individual_with_consts,
     detect_nested_trigonometric_functions,
@@ -28,9 +30,56 @@ from sr_tire.dynamic_pde.simulate_pde_dctkit import (
 )
 
 
-INVALID_MSE = 1.0e12
+INVALID_MSE = 1.0e6
 DEFAULT_PSO_GENERATIONS = 8
 DEFAULT_PSO_SWARM_SIZE = 12
+
+
+def cap_fitness_value(value, cap=INVALID_MSE):
+    if value is None or np.isnan(value) or np.isinf(value):
+        return cap
+    return min(float(value), cap)
+
+
+class JittedCochainIndividual:
+    """JIT a Flex individual over cochain coefficient arrays."""
+
+    def __init__(self, individual):
+        self.individual = individual
+        self._compiled_by_complex = {}
+
+    def _compiled_for_complex(self, complex_):
+        key = id(complex_)
+        if key not in self._compiled_by_complex:
+
+            def evaluate_coeffs(z_coeffs, sigma_coeffs, xi_coeffs, consts):
+                z_p0 = C.CochainP0(complex_, z_coeffs)
+                sigma_p0 = C.CochainP0(complex_, sigma_coeffs)
+                xi_p0 = C.CochainP0(complex_, xi_coeffs)
+                value = self.individual(z_p0, sigma_p0, xi_p0, consts)
+                if isinstance(value, C.Cochain):
+                    return value.coeffs.reshape(-1)
+                return jnp.asarray(value)
+
+            self._compiled_by_complex[key] = jax.jit(evaluate_coeffs)
+        return self._compiled_by_complex[key]
+
+    def __call__(self, z_p0, sigma_p0, xi_p0, consts=None):
+        if consts is None:
+            consts = []
+        evaluate_coeffs = self._compiled_for_complex(z_p0.complex)
+        return evaluate_coeffs(
+            z_p0.coeffs.reshape(-1),
+            sigma_p0.coeffs.reshape(-1),
+            xi_p0.coeffs.reshape(-1),
+            jnp.asarray(consts, dtype=float),
+        )
+
+
+def jit_individual(individual):
+    if isinstance(individual, JittedCochainIndividual):
+        return individual
+    return JittedCochainIndividual(individual)
 
 
 @dataclass(frozen=True)
@@ -51,6 +100,8 @@ class DynamicPDEDataset:
     omega: float
     amplitude_ratio: float
     force_scale: float
+    clear_jax_caches: bool
+    solver_max_dt: float | None
 
 
 def _split_indices(num_points, train_fraction=0.7, val_fraction=0.15):
@@ -78,6 +129,10 @@ def load_dynamic_pde_dataset(
     train_fraction=0.7,
     val_fraction=0.15,
     force_scale="auto",
+    time_stride=1,
+    max_time_points=None,
+    clear_jax_caches=True,
+    solver_max_dt=None,
 ):
     """Load one CSV force trajectory and split its time indices."""
 
@@ -95,7 +150,21 @@ def load_dynamic_pde_dataset(
             f"parameterization={parameterization}, excitation={excitation}, run={run}."
         )
 
+    t = np.asarray(t, dtype=float)
     force_row = np.asarray(force[mask][0], dtype=float)
+    time_stride = int(time_stride)
+    if time_stride < 1:
+        raise ValueError("time_stride must be at least 1.")
+    if max_time_points is not None:
+        max_time_points = int(max_time_points)
+        if max_time_points < 2:
+            raise ValueError("max_time_points must be at least 2.")
+        time_stride = max(time_stride, int(np.ceil(force_row.size / max_time_points)))
+
+    if time_stride > 1:
+        t = t[::time_stride]
+        force_row = force_row[::time_stride]
+
     train_indices, val_indices, test_indices = _split_indices(
         force_row.size,
         train_fraction=train_fraction,
@@ -109,7 +178,7 @@ def load_dynamic_pde_dataset(
         scale = float(force_scale)
 
     dataset = DynamicPDEDataset(
-        t=np.asarray(t, dtype=float),
+        t=t,
         force=force_row,
         train_indices=train_indices,
         val_indices=val_indices,
@@ -123,6 +192,8 @@ def load_dynamic_pde_dataset(
         omega=float(omega),
         amplitude_ratio=float(amplitude_ratio),
         force_scale=scale,
+        clear_jax_caches=bool(clear_jax_caches),
+        solver_max_dt=None if solver_max_dt is None else float(solver_max_dt),
     )
 
     return (
@@ -137,6 +208,7 @@ def load_dynamic_pde_dataset(
 
 
 def make_rhs_term_from_callable(individual, consts=None):
+    individual = jit_individual(individual)
     if consts is None:
         consts = []
 
@@ -157,17 +229,26 @@ def make_rhs_term_from_callable(individual, consts=None):
 
 def solve_force_with_rhs_callable(individual, dataset: DynamicPDEDataset, consts=None):
     rhs_term = make_rhs_term_from_callable(individual, consts=consts)
+    n_t = dataset.t.size
+    if dataset.solver_max_dt is not None:
+        t_span_length = float(dataset.t[-1] - dataset.t[0])
+        n_t = max(n_t, int(np.ceil(t_span_length / dataset.solver_max_dt)) + 1)
+
     result = simulate_pde_dctkit_with_rhs_term(
         params=dataset.params,
         n_x=dataset.n_x,
         t_span=(float(dataset.t[0]), float(dataset.t[-1])),
-        n_t=dataset.t.size,
+        n_t=n_t,
         sigma_0=dataset.sigma_0,
         omega=dataset.omega,
         amplitude_ratio=dataset.amplitude_ratio,
         rhs_term=rhs_term,
     )
-    return np.asarray(jax.device_get(result.force), dtype=float)
+    t_solve = np.asarray(jax.device_get(result.t), dtype=float)
+    force_solve = np.asarray(jax.device_get(result.force), dtype=float)
+    if t_solve.size == dataset.t.size and np.allclose(t_solve, dataset.t):
+        return force_solve
+    return np.interp(dataset.t, t_solve, force_solve)
 
 
 def predict_force_from_callable(individual, X, dataset: DynamicPDEDataset, consts=None):
@@ -182,17 +263,23 @@ def compute_dynamic_pde_force_MSE(
     y,
     dataset: DynamicPDEDataset,
     consts=None,
+    clear_caches=None,
 ):
+    if clear_caches is None:
+        clear_caches = dataset.clear_jax_caches
+
+    mse = INVALID_MSE
     try:
         y_pred = predict_force_from_callable(individual, X, dataset, consts=consts)
         residual = (np.asarray(y, dtype=float) - y_pred) / dataset.force_scale
         mse = float(np.mean(residual**2))
     except Exception:
-        return INVALID_MSE
+        mse = INVALID_MSE
+    finally:
+        if clear_caches:
+            jax.clear_caches()
 
-    if np.isnan(mse) or np.isinf(mse):
-        return INVALID_MSE
-    return mse
+    return cap_fitness_value(mse)
 
 
 def eval_MSE_and_tune_constants(
@@ -206,10 +293,20 @@ def eval_MSE_and_tune_constants(
     pso_swarm_size=DEFAULT_PSO_SWARM_SIZE,
 ):
     individual, num_consts = compile_individual_with_consts(tree, toolbox)
+    individual = jit_individual(individual)
 
     if num_consts > 0:
         x0 = np.zeros(num_consts)
         lower, upper = constant_bounds
+        if int(pso_generations) <= 0 or int(pso_swarm_size) <= 0:
+            mse = compute_dynamic_pde_force_MSE(
+                individual,
+                X,
+                y,
+                dataset,
+                consts=x0,
+            )
+            return mse, x0
 
         class fitting_problem:
             def fitness(self, x):
@@ -219,6 +316,7 @@ def eval_MSE_and_tune_constants(
                     y,
                     dataset,
                     consts=x,
+                    clear_caches=False,
                 )
                 return [total_err]
 
@@ -230,11 +328,12 @@ def eval_MSE_and_tune_constants(
         pop = pg.population(prb, size=int(pso_swarm_size))
         pop.set_x(0, x0)
         pop = algo.evolve(pop)
+        if dataset.clear_jax_caches:
+            jax.clear_caches()
         mse = float(pop.champion_f[0])
         consts = pop.champion_x
 
-        if np.isinf(mse) or np.isnan(mse):
-            mse = INVALID_MSE
+        mse = cap_fitness_value(mse)
     else:
         mse = compute_dynamic_pde_force_MSE(individual, X, y, dataset)
         consts = []
@@ -260,6 +359,7 @@ def predict(individuals_batch, toolbox, X, penalty, fitness_scale, dataset):
     predictions = [None] * len(individuals_batch)
     for i, tree in enumerate(individuals_batch):
         callable_individual, _ = compile_individual_with_consts(tree, toolbox)
+        callable_individual = jit_individual(callable_individual)
         predictions[i] = predict_force_from_callable(
             callable_individual,
             X,
@@ -302,11 +402,13 @@ def compute_attributes(
                 pso_swarm_size=pso_swarm_size,
             )
             fitness = (
-                fitness_scale
-                * (
-                    mse
-                    + 100000.0 * nested_trigs[i]
-                    + penalty["reg_param"] * individ_length[i]
+                cap_fitness_value(
+                    fitness_scale
+                    * (
+                        mse
+                        + 100000.0 * nested_trigs[i]
+                        + penalty["reg_param"] * individ_length[i]
+                    )
                 ),
             )
         attributes[i] = {"consts": consts, "fitness": fitness, "train_mse": mse}
@@ -329,4 +431,3 @@ def score(individuals_batch, toolbox, X, y, penalty, fitness_scale, dataset):
         except Exception:
             scores[i] = -np.inf
     return scores
-
